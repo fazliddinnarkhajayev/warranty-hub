@@ -211,6 +211,11 @@
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Safe area bottom for nav */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
   /* Screen container */
   .tg-screen {
     @apply min-h-screen pb-safe;

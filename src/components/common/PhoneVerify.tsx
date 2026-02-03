@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Phone, ArrowRight, ChevronLeft } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { hapticFeedback } from '@/lib/telegram';
+import { formatUzbekPhone, isValidUzbekPhone, UZBEK_PHONE_PLACEHOLDER } from '@/lib/phoneUtils';
 import { cn } from '@/lib/utils';
 
 export const PhoneVerify: React.FC = () => {
@@ -11,28 +12,13 @@ export const PhoneVerify: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const formatPhone = (value: string) => {
-    // Remove all non-digits
-    const digits = value.replace(/\D/g, '');
-    
-    // Format as +7 XXX XXX-XX-XX
-    if (digits.length === 0) return '';
-    if (digits.length <= 1) return `+${digits}`;
-    if (digits.length <= 4) return `+${digits.slice(0, 1)} ${digits.slice(1)}`;
-    if (digits.length <= 7) return `+${digits.slice(0, 1)} ${digits.slice(1, 4)} ${digits.slice(4)}`;
-    if (digits.length <= 9) return `+${digits.slice(0, 1)} ${digits.slice(1, 4)} ${digits.slice(4, 7)}-${digits.slice(7)}`;
-    return `+${digits.slice(0, 1)} ${digits.slice(1, 4)} ${digits.slice(4, 7)}-${digits.slice(7, 9)}-${digits.slice(9, 11)}`;
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhone(e.target.value);
+    const formatted = formatUzbekPhone(e.target.value);
     setPhone(formatted);
   };
 
-  const isValidPhone = phone.replace(/\D/g, '').length >= 11;
-
   const handleSubmit = async () => {
-    if (!isValidPhone || !role) return;
+    if (!isValidUzbekPhone(phone) || !role) return;
 
     hapticFeedback.medium();
     setIsLoading(true);
@@ -108,7 +94,7 @@ export const PhoneVerify: React.FC = () => {
             type="tel"
             value={phone}
             onChange={handlePhoneChange}
-            placeholder="+7 999 123-45-67"
+            placeholder={UZBEK_PHONE_PLACEHOLDER}
             className="tg-input w-full text-lg"
             autoFocus
           />
@@ -119,10 +105,10 @@ export const PhoneVerify: React.FC = () => {
       <div className="p-4 pb-8">
         <button
           onClick={handleSubmit}
-          disabled={!isValidPhone || isLoading}
+          disabled={!isValidUzbekPhone(phone) || isLoading}
           className={cn(
             'tg-button-primary w-full flex items-center justify-center gap-2',
-            (!isValidPhone || isLoading) && 'opacity-50 cursor-not-allowed'
+            (!isValidUzbekPhone(phone) || isLoading) && 'opacity-50 cursor-not-allowed'
           )}
         >
           {isLoading ? (
