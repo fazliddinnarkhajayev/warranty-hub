@@ -55,8 +55,8 @@ export const BottomNav: React.FC = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-nav-background border-t border-nav-border">
-      <div className="flex items-center justify-around h-16 pb-safe max-w-md mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-area-bottom">
+      <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
@@ -66,12 +66,14 @@ export const BottomNav: React.FC = () => {
               key={item.path}
               onClick={() => handleNavClick(item.path)}
               className={cn(
-                'flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors duration-200',
-                isActive ? 'text-nav-active' : 'text-nav-inactive'
+                'flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors duration-200 rounded-lg min-w-0',
+                isActive 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon className={cn('w-6 h-6', isActive && 'animate-scale-in')} />
-              <span className="text-2xs font-medium">{item.label}</span>
+              <Icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'animate-scale-in')} />
+              <span className="text-[10px] font-medium truncate max-w-full px-1">{item.label}</span>
             </button>
           );
         })}
