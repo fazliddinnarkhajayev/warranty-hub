@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getUser, initTelegramWebApp } from '@/lib/telegram';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { getUser, initTelegramWebApp } from "@/lib/telegram";
 
-export type UserRole = 'seller' | 'customer' | 'technician' | null;
+export type UserRole = "seller" | "customer" | "technician" | null;
 
 interface AppUser {
   telegramId: number;
@@ -26,7 +26,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const useApp = () => {
   const context = useContext(AppContext);
   if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
+    throw new Error("useApp must be used within an AppProvider");
   }
   return context;
 };
@@ -41,48 +41,56 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
 
   useEffect(() => {
-    // Initialize Telegram WebApp
+    // 1️⃣ Telegram WebApp init
     initTelegramWebApp();
 
-    // Check for existing registration
-    const savedUser = localStorage.getItem('warranty_bot_user');
+    // 2️⃣ Load user from localStorage if exists
+    const savedUser = localStorage.getItem("warranty_bot_user");
     if (savedUser) {
       try {
-        const parsed = JSON.parse(savedUser);
+        const parsed = JSON.parse(savedUser) as AppUser;
         setUser(parsed);
+        setSelectedRole(parsed.role); // role guard uchun
       } catch (e) {
-        console.error('Failed to parse saved user:', e);
+        console.error("Failed to parse saved user:", e);
       }
     }
 
     setIsLoading(false);
   }, []);
 
+  // Complete registration (role + phone)
   const completeRegistration = (role: UserRole, phone: string) => {
     const telegramUser = getUser();
     const newUser: AppUser = {
       telegramId: telegramUser.id,
-      name: `${telegramUser.first_name} ${telegramUser.last_name || ''}`.trim(),
+      name: `${telegramUser.first_name} ${telegramUser.last_name || ""}`.trim(),
       phone,
       role,
     };
     setUser(newUser);
-    localStorage.setItem('warranty_bot_user', JSON.stringify(newUser));
+    setSelectedRole(role);
+    localStorage.setItem("warranty_bot_user", JSON.stringify(newUser));
   };
 
+  // Logout
   const logout = () => {
     setUser(null);
     setSelectedRole(null);
-    localStorage.removeItem('warranty_bot_user');
+    localStorage.removeItem("warranty_bot_user");
   };
 
+  // Set role before phone verification
   const setRole = (role: UserRole) => {
     setSelectedRole(role);
   };
 
+  // Set phone (calls completeRegistration if role is selected)
   const setPhone = (phone: string) => {
     if (selectedRole) {
       completeRegistration(selectedRole, phone);
+    } else {
+      console.warn("Role not selected yet");
     }
   };
 
