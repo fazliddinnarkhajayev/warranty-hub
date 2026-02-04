@@ -1,80 +1,84 @@
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, FileText, Plus, BarChart3, User, Wrench, ClipboardList } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Home, FileText, Plus, BarChart3, User, Wrench, ShieldCheck } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
-import { hapticFeedback } from '@/lib/telegram';
 import { cn } from '@/lib/utils';
+import { hapticFeedback } from '@/lib/telegram';
+import { getTranslation } from '@/lib/i18n';
 
 interface NavItem {
-  icon: React.ElementType;
-  label: string;
   path: string;
+  icon: React.ReactNode;
+  labelKey: 'main' | 'warranties' | 'services' | 'create' | 'statistics' | 'profile';
 }
 
-const getNavItems = (role: string | null): NavItem[] => {
-  switch (role) {
-    case 'seller':
-      return [
-        { icon: Home, label: 'Главная', path: '/seller' },
-        { icon: FileText, label: 'Гарантии', path: '/seller/warranties' },
-        { icon: Plus, label: 'Создать', path: '/seller/create' },
-        { icon: BarChart3, label: 'Статистика', path: '/seller/stats' },
-        { icon: User, label: 'Профиль', path: '/profile' },
-      ];
-    case 'customer':
-      return [
-        { icon: Home, label: 'Главная', path: '/customer' },
-        { icon: FileText, label: 'Гарантии', path: '/customer/warranties' },
-        { icon: User, label: 'Профиль', path: '/profile' },
-      ];
-    case 'technician':
-      return [
-        { icon: Home, label: 'Главная', path: '/technician' },
-        { icon: ClipboardList, label: 'Заявки', path: '/technician/jobs' },
-        { icon: Wrench, label: 'Создать', path: '/technician/create' },
-        { icon: BarChart3, label: 'Статистика', path: '/technician/stats' },
-        { icon: User, label: 'Профиль', path: '/profile' },
-      ];
-    default:
-      return [];
-  }
-};
+const sellerNav: NavItem[] = [
+  { path: '/seller', icon: <Home className="w-5 h-5" />, labelKey: 'main' },
+  { path: '/seller/warranties', icon: <ShieldCheck className="w-5 h-5" />, labelKey: 'warranties' },
+  { path: '/seller/create', icon: <Plus className="w-5 h-5" />, labelKey: 'create' },
+  { path: '/seller/stats', icon: <BarChart3 className="w-5 h-5" />, labelKey: 'statistics' },
+  { path: '/profile', icon: <User className="w-5 h-5" />, labelKey: 'profile' },
+];
+
+const customerNav: NavItem[] = [
+  { path: '/customer', icon: <Home className="w-5 h-5" />, labelKey: 'main' },
+  { path: '/customer/warranties', icon: <ShieldCheck className="w-5 h-5" />, labelKey: 'warranties' },
+  { path: '/customer/services', icon: <Wrench className="w-5 h-5" />, labelKey: 'services' },
+  { path: '/customer/stats', icon: <BarChart3 className="w-5 h-5" />, labelKey: 'statistics' },
+  { path: '/profile', icon: <User className="w-5 h-5" />, labelKey: 'profile' },
+];
+
+const technicianNav: NavItem[] = [
+  { path: '/technician', icon: <Home className="w-5 h-5" />, labelKey: 'main' },
+  { path: '/technician/jobs', icon: <Wrench className="w-5 h-5" />, labelKey: 'services' },
+  { path: '/technician/create', icon: <Plus className="w-5 h-5" />, labelKey: 'create' },
+  { path: '/technician/stats', icon: <BarChart3 className="w-5 h-5" />, labelKey: 'statistics' },
+  { path: '/profile', icon: <User className="w-5 h-5" />, labelKey: 'profile' },
+];
 
 export const BottomNav: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { role } = useApp();
+  const { user, language } = useApp();
 
-  const navItems = getNavItems(role);
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
+
+  const getNavItems = (): NavItem[] => {
+    switch (user?.role) {
+      case 'seller':
+        return sellerNav;
+      case 'customer':
+        return customerNav;
+      case 'technician':
+        return technicianNav;
+      default:
+        return [];
+    }
+  };
+
+  const navItems = getNavItems();
 
   if (navItems.length === 0) return null;
 
-  const handleNavClick = (path: string) => {
-    hapticFeedback.light();
-    navigate(path);
-  };
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-area-bottom">
-      <div className="flex items-center justify-around h-16 max-w-md mx-auto px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(var(--nav-background))] border-t border-[hsl(var(--nav-border))] safe-area-bottom">
+      <div className="flex items-center justify-around h-16">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          const Icon = item.icon;
-
+          const isActive = location.pathname === item.path || 
+            (item.path !== '/profile' && location.pathname.startsWith(item.path) && item.path.length > 1);
+          
           return (
-            <button
+            <NavLink
               key={item.path}
-              onClick={() => handleNavClick(item.path)}
+              to={item.path}
+              onClick={() => hapticFeedback.selection()}
               className={cn(
-                'flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors duration-200 rounded-lg min-w-0',
-                isActive 
-                  ? 'text-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
+                'flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors',
+                isActive ? 'text-[hsl(var(--nav-active))]' : 'text-[hsl(var(--nav-inactive))]'
               )}
             >
-              <Icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'animate-scale-in')} />
-              <span className="text-[10px] font-medium truncate max-w-full px-1">{item.label}</span>
-            </button>
+              {item.icon}
+              <span className="text-[10px] font-medium">{t(item.labelKey)}</span>
+            </NavLink>
           );
         })}
       </div>

@@ -4,11 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider, useApp } from "@/contexts/AppContext";
+import { Loader2 } from "lucide-react";
 
-// Common components
-import { RoleSelect } from "@/components/common/RoleSelect";
-import { PhoneVerify } from "@/components/common/PhoneVerify";
-import { Profile } from "@/components/common/Profile";
+// Auth components
+import { PhoneRequest, PendingScreen, RegisterForm } from "@/components/auth";
 
 // Seller components
 import { SellerHome } from "@/components/seller/SellerHome";
@@ -20,6 +19,7 @@ import { SellerStats } from "@/components/seller/SellerStats";
 import { CustomerHome } from "@/components/customer/CustomerHome";
 import { MyWarranties } from "@/components/customer/MyWarranties";
 import { WarrantyDetails } from "@/components/customer/WarrantyDetails";
+import { CustomerServices } from "@/components/customer/CustomerServices";
 
 // Technician components
 import { TechnicianHome } from "@/components/technician/TechnicianHome";
@@ -27,24 +27,33 @@ import { CreateServiceLog } from "@/components/technician/CreateServiceLog";
 import { MyJobs } from "@/components/technician/MyJobs";
 import { TechnicianStats } from "@/components/technician/TechnicianStats";
 
+// Common
+import { Profile } from "@/components/common/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+// Loading screen
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+);
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({
   children,
   allowedRoles,
 }) => {
-  const { isRegistered, role } = useApp();
+  const { user, authStatus } = useApp();
 
-  if (!isRegistered) {
+  if (!user || authStatus !== 'approved') {
     return <Navigate to="/" replace />;
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to the user's own dashboard
-    switch (role) {
+    switch (user.role) {
       case 'seller':
         return <Navigate to="/seller" replace />;
       case 'customer':
@@ -59,13 +68,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
   return <>{children}</>;
 };
 
-// Auth check for role select
+// Auth check for initial route
 const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isRegistered, role } = useApp();
+  const { user, authStatus } = useApp();
 
-  if (isRegistered) {
+  if (authStatus === 'pending') {
+    return <Navigate to="/pending" replace />;
+  }
+
+  if (user && authStatus === 'approved') {
     // Redirect to the user's dashboard
-    switch (role) {
+    switch (user.role) {
       case 'seller':
         return <Navigate to="/seller" replace />;
       case 'customer':
@@ -79,6 +92,12 @@ const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const AppRoutes = () => {
+  const { isLoading } = useApp();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <Routes>
       {/* Auth routes */}
@@ -86,11 +105,12 @@ const AppRoutes = () => {
         path="/"
         element={
           <AuthRoute>
-            <RoleSelect />
+            <PhoneRequest />
           </AuthRoute>
         }
       />
-      <Route path="/verify" element={<PhoneVerify />} />
+      <Route path="/pending" element={<PendingScreen />} />
+      <Route path="/register" element={<RegisterForm />} />
 
       {/* Seller routes */}
       <Route
@@ -148,6 +168,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['customer']}>
             <WarrantyDetails />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/services"
+        element={
+          <ProtectedRoute allowedRoles={['customer']}>
+            <CustomerServices />
           </ProtectedRoute>
         }
       />

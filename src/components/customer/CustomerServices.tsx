@@ -1,21 +1,22 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Loader2 } from 'lucide-react';
+import { Wrench, Loader2 } from 'lucide-react';
 import { Header } from '@/components/common/Header';
 import { BottomNav } from '@/components/common/BottomNav';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { useApp } from '@/contexts/AppContext';
-import { useWarranties } from '@/hooks/useApi';
+import { useServices } from '@/hooks/useApi';
 import { hapticFeedback } from '@/lib/telegram';
 import { getTranslation } from '@/lib/i18n';
 
-export const MyWarranties: React.FC = () => {
+export const CustomerServices: React.FC = () => {
   const navigate = useNavigate();
   const { user, language } = useApp();
+  
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
-
-  const { data: warranties, isLoading } = useWarranties({
-    customer_id: user?.id,
+  
+  const { data: services, isLoading } = useServices({ 
+    customer_id: user?.id 
   });
 
   const formatDate = (dateString: string) => {
@@ -25,42 +26,56 @@ export const MyWarranties: React.FC = () => {
     );
   };
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat(
+      language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US'
+    ).format(price);
+  };
+
   return (
     <div className="tg-screen bg-background">
-      <Header title={t('all_warranties')} showBack />
+      <Header title={t('technical_services')} showBack />
 
       <div className="p-4">
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : warranties && warranties.length > 0 ? (
+        ) : services && services.length > 0 ? (
           <div className="space-y-3">
-            {warranties.map((warranty, index) => (
+            {services.map((service, index) => (
               <div
-                key={warranty.id}
+                key={service.id}
                 className="tg-card-interactive animate-slide-up"
                 style={{ animationDelay: `${index * 50}ms` }}
                 onClick={() => {
                   hapticFeedback.light();
-                  navigate(`/customer/warranty/${warranty.id}`);
                 }}
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <ShieldCheck className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                    <Wrench className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-semibold truncate">{warranty.product_name}</h3>
-                      <StatusBadge status={warranty.status} />
+                      <h3 className="font-semibold truncate">{service.product_name}</h3>
+                      <StatusBadge status={service.status} />
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {t('serial_number')}: {warranty.serial_number}
+                    <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                      {service.problem}
                     </p>
-                    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                      <span>{formatDate(warranty.start_date)}</span>
-                      <span>→ {formatDate(warranty.expiry_date)}</span>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{formatDate(service.created_at)}</span>
+                      {!service.is_warranty && service.price > 0 && (
+                        <span className="font-medium text-foreground">
+                          {formatPrice(service.price)} сум
+                        </span>
+                      )}
+                      {service.is_warranty && (
+                        <span className="text-success font-medium">
+                          {t('warranty_repair')}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -69,7 +84,7 @@ export const MyWarranties: React.FC = () => {
           </div>
         ) : (
           <div className="tg-card text-center py-12">
-            <ShieldCheck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <Wrench className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">{t('empty')}</p>
           </div>
         )}

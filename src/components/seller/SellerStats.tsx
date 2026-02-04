@@ -1,103 +1,108 @@
 import React from 'react';
-import { ShieldCheck, TrendingUp, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { TrendingUp, ShieldCheck, Calendar, Loader2 } from 'lucide-react';
 import { Header } from '@/components/common/Header';
 import { BottomNav } from '@/components/common/BottomNav';
-import { getSellerStats } from '@/lib/mockData';
+import { useApp } from '@/contexts/AppContext';
+import { useSellerStats } from '@/hooks/useApi';
+import { getTranslation } from '@/lib/i18n';
 
 export const SellerStats: React.FC = () => {
-  const stats = getSellerStats();
+  const { user, language } = useApp();
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
+  
+  const { data: stats, isLoading } = useSellerStats(user?.id);
 
-  const statCards = [
-    {
-      icon: ShieldCheck,
-      label: 'Всего гарантий',
-      value: stats.totalWarranties,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
-    },
-    {
-      icon: CheckCircle,
-      label: 'Активных',
-      value: stats.activeWarranties,
-      color: 'text-success',
-      bgColor: 'bg-success/10',
-    },
-    {
-      icon: XCircle,
-      label: 'Истёкших',
-      value: stats.expiredWarranties,
-      color: 'text-destructive',
-      bgColor: 'bg-destructive/10',
-    },
-    {
-      icon: Calendar,
-      label: 'В этом месяце',
-      value: stats.thisMonth,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
-    },
-  ];
+  if (isLoading) {
+    return (
+      <div className="tg-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="tg-screen bg-background">
-      <Header title="Статистика" showBack />
+      <Header title={t('statistics')} showBack />
 
-      <div className="p-4 space-y-6">
-        {/* Main stats grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {statCards.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={stat.label}
-                className="tg-card animate-scale-in"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className={`w-10 h-10 rounded-xl ${stat.bgColor} flex items-center justify-center mb-3`}>
-                  <Icon className={`w-5 h-5 ${stat.color}`} />
-                </div>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            );
-          })}
+      <div className="p-4 space-y-4">
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 gap-3 animate-fade-in">
+          <div className="tg-stat">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+            </div>
+            <div className="tg-stat-value">{stats?.total_warranties || 0}</div>
+            <div className="tg-stat-label">{t('warranties')}</div>
+          </div>
+          <div className="tg-stat">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5 text-success" />
+            </div>
+            <div className="tg-stat-value text-success">{stats?.active_warranties || 0}</div>
+            <div className="tg-stat-label">{t('status_active')}</div>
+          </div>
         </div>
 
-        {/* Performance section */}
-        <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
-          <p className="tg-section-header">Эффективность</p>
-          <div className="tg-card">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-success" />
-              </div>
-              <div>
-                <p className="font-semibold">Отличные результаты!</p>
-                <p className="text-sm text-muted-foreground">
-                  {stats.activeWarranties} активных гарантий
-                </p>
-              </div>
+        {/* Period stats */}
+        <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+          <p className="tg-section-header">{t('this_month')}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="tg-card text-center">
+              <div className="text-2xl font-bold text-primary">{stats?.this_month || 0}</div>
+              <div className="text-sm text-muted-foreground">{t('this_month')}</div>
             </div>
-            
-            {/* Progress bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Активных</span>
-                <span className="font-medium">
-                  {Math.round((stats.activeWarranties / stats.totalWarranties) * 100)}%
-                </span>
-              </div>
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-success rounded-full transition-all duration-500"
-                  style={{
-                    width: `${(stats.activeWarranties / stats.totalWarranties) * 100}%`,
-                  }}
-                />
-              </div>
+            <div className="tg-card text-center">
+              <div className="text-2xl font-bold">{stats?.this_week || 0}</div>
+              <div className="text-sm text-muted-foreground">На этой неделе</div>
             </div>
           </div>
         </div>
+
+        {/* Status breakdown */}
+        <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
+          <p className="tg-section-header">По статусам</p>
+          <div className="tg-card space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-success" />
+                <span>{t('status_active')}</span>
+              </div>
+              <span className="font-semibold">{stats?.by_status?.active || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-destructive" />
+                <span>{t('status_expired')}</span>
+              </div>
+              <span className="font-semibold">{stats?.by_status?.expired || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-warning" />
+                <span>{t('status_pending')}</span>
+              </div>
+              <span className="font-semibold">{stats?.by_status?.pending || 0}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly trend */}
+        {stats?.monthly_trend && stats.monthly_trend.length > 0 && (
+          <div className="animate-slide-up" style={{ animationDelay: '300ms' }}>
+            <p className="tg-section-header">По месяцам</p>
+            <div className="tg-card">
+              <div className="space-y-3">
+                {stats.monthly_trend.slice(0, 6).map((item, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <span className="flex-1">{item.month}</span>
+                    <span className="font-semibold">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <BottomNav />
