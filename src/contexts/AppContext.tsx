@@ -1,24 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getUser, initTelegramWebApp } from "@/lib/telegram";
-
-export type UserRole = "seller" | "customer" | "technician" | null;
-
-interface AppUser {
-  telegramId: number;
-  name: string;
-  phone: string;
-  role: UserRole;
-}
+import { getTelegramUser, initTelegramWebApp, getTelegramWebApp } from "@/lib/telegram";
+import { authApi } from "@/lib/api";
+import type { User, AuthStatus, UserRole } from "@/lib/api/types";
+import { detectLanguage, type Language } from "@/lib/i18n";
 
 interface AppContextType {
-  user: AppUser | null;
-  isRegistered: boolean;
+  user: User | null;
   isLoading: boolean;
-  role: UserRole;
-  setRole: (role: UserRole) => void;
-  setPhone: (phone: string) => void;
-  completeRegistration: (role: UserRole, phone: string) => void;
+  authStatus: AuthStatus | null;
+  language: Language;
+  theme: 'light' | 'dark';
+  telegramUser: { id: number; first_name: string; last_name?: string; phone?: string } | null;
+  setUser: (user: User | null) => void;
+  setAuthStatus: (status: AuthStatus) => void;
+  setLanguage: (lang: Language) => void;
+  setTheme: (theme: 'light' | 'dark') => void;
   logout: () => void;
+  checkAuth: (phone: string) => Promise<AuthStatus>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -36,21 +34,52 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedRole, setSelectedRole] = useState<UserRole>(null);
+  const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+  const [language, setLanguage] = useState<Language>('ru');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [telegramUser, setTelegramUser] = useState<{ id: number; first_name: string; last_name?: string; phone?: string } | null>(null);
 
   useEffect(() => {
-    // 1️⃣ Telegram WebApp init
+    // Initialize Telegram WebApp
     initTelegramWebApp();
 
-    // 2️⃣ Load user from localStorage if exists
+    // Detect language from Telegram
+    const detectedLang = detectLanguage();
+    setLanguage(detectedLang);
+
+    // Get Telegram user info
+    const tgUser = getTelegramUser();
+    if (tgUser) {
+      setTelegramUser({
+        id: tgUser.id,
+        first_name: tgUser.first_name,
+        last_name: tgUser.last_name,
+      });
+    }
+
+    // Check theme from Telegram
+    const webApp = getTelegramWebApp();
+    if (webApp?.colorScheme === 'dark') {
+      setTheme('dark');
+      document.documentElement.classList.add('dark');
+    }
+
+    // Try to load saved user from localStorage
     const savedUser = localStorage.getItem("warranty_bot_user");
     if (savedUser) {
       try {
-        const parsed = JSON.parse(savedUser) as AppUser;
+        const parsed = JSON.parse(savedUser) as User;
         setUser(parsed);
-        setSelectedRole(parsed.role); // role guard uchun
+        setAuthStatus(parsed.status);
+        if (parsed.theme === 'dark') {
+          setTheme('dark');
+          document.documentElement.classList.add('dark');
+        }
+        if (parsed.language) {
+          setLanguage(parsed.language as Language);
+        }
       } catch (e) {
         console.error("Failed to parse saved user:", e);
       }
@@ -59,55 +88,70 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setIsLoading(false);
   }, []);
 
-  // Complete registration (role + phone)
-  const completeRegistration = (role: UserRole, phone: string) => {
-    const telegramUser = getUser();
-    const newUser: AppUser = {
-      telegramId: telegramUser.id,
-      name: `${telegramUser.first_name} ${telegramUser.last_name || ""}`.trim(),
-      phone,
-      role,
-    };
-    setUser(newUser);
-    setSelectedRole(role);
-    localStorage.setItem("warranty_bot_user", JSON.stringify(newUser));
+  // Update theme on document
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const checkAuth = async (phone: string): Promise<AuthStatus> => {
+    if (!telegramUser) {
+      throw new Error('Telegram user not available');
+    }
+
+    try {
+      const response = await authApi.telegramAuth({
+        telegram_id: telegramUser.id,
+        phone,
+        firstname: telegramUser.first_name,
+        lastname: telegramUser.last_name,
+        language,
+      });
+
+      setAuthStatus(response.status);
+
+      if (response.status === 'approved' && response.user) {
+        setUser(response.user);
+        localStorage.setItem("warranty_bot_user", JSON.stringify(response.user));
+      }
+
+      return response.status;
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      throw error;
+    }
   };
 
-  // Logout
   const logout = () => {
     setUser(null);
-    setSelectedRole(null);
+    setAuthStatus(null);
     localStorage.removeItem("warranty_bot_user");
-  };
-
-  // Set role before phone verification
-  const setRole = (role: UserRole) => {
-    setSelectedRole(role);
-  };
-
-  // Set phone (calls completeRegistration if role is selected)
-  const setPhone = (phone: string) => {
-    if (selectedRole) {
-      completeRegistration(selectedRole, phone);
-    } else {
-      console.warn("Role not selected yet");
-    }
   };
 
   return (
     <AppContext.Provider
       value={{
         user,
-        isRegistered: !!user,
         isLoading,
-        role: user?.role || selectedRole,
-        setRole,
-        setPhone,
-        completeRegistration,
+        authStatus,
+        language,
+        theme,
+        telegramUser,
+        setUser,
+        setAuthStatus,
+        setLanguage,
+        setTheme,
         logout,
+        checkAuth,
       }}
     >
       {children}
     </AppContext.Provider>
   );
 };
+
+// Re-export types for backward compatibility
+export type { UserRole } from "@/lib/api/types";

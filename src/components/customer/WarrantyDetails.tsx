@@ -1,125 +1,109 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { ShieldCheck, Calendar, User, Phone, Hash, Store, Clock, Wrench } from 'lucide-react';
+import { ShieldCheck, Calendar, User, Wrench, Loader2, AlertCircle } from 'lucide-react';
 import { Header } from '@/components/common/Header';
 import { BottomNav } from '@/components/common/BottomNav';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { mockWarranties, mockServiceLogs } from '@/lib/mockData';
+import { useApp } from '@/contexts/AppContext';
+import { useWarranty } from '@/hooks/useApi';
+import { getTranslation } from '@/lib/i18n';
 
 export const WarrantyDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const warranty = mockWarranties.find(w => w.id === id);
-  const serviceLogs = mockServiceLogs.filter(s => s.warranty_id === id);
+  const { language } = useApp();
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
-  if (!warranty) {
+  const { data: warranty, isLoading, error } = useWarranty(id);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString(
+      language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US',
+      { day: 'numeric', month: 'long', year: 'numeric' }
+    );
+  };
+
+  if (isLoading) {
     return (
-      <div className="tg-screen bg-background">
-        <Header title="Гарантия" showBack />
-        <div className="flex items-center justify-center h-64 text-muted-foreground">
-          Гарантия не найдена
-        </div>
+      <div className="tg-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
-
-  const daysLeft = Math.max(0, Math.ceil(
-    (new Date(warranty.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  ));
+  if (error || !warranty) {
+    return (
+      <div className="tg-screen bg-background">
+        <Header title={t('warranties')} showBack />
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+          <p className="text-lg font-medium">{t('warranty_not_found')}</p>
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="tg-screen bg-background">
-      <Header title="Детали гарантии" showBack />
+      <Header title={warranty.product_name} showBack />
 
       <div className="p-4 space-y-4">
         {/* Product card */}
         <div className="tg-card animate-fade-in">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
               <ShieldCheck className="w-8 h-8 text-primary" />
             </div>
-            <div className="flex-1">
-              <h2 className="text-lg font-bold">{warranty.product_name}</h2>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <h2 className="text-lg font-semibold">{warranty.product_name}</h2>
+                <StatusBadge status={warranty.status} />
+              </div>
               <p className="text-sm text-muted-foreground">S/N: {warranty.serial_number}</p>
             </div>
           </div>
-          
-          <div className="flex items-center justify-between">
-            <StatusBadge status={warranty.status} />
-            {warranty.status === 'active' && (
-              <span className="text-sm text-muted-foreground">
-                Осталось {daysLeft} дней
-              </span>
-            )}
-          </div>
         </div>
 
-        {/* Info cards */}
-        <div className="grid grid-cols-2 gap-3 animate-slide-up" style={{ animationDelay: '50ms' }}>
-          <div className="tg-card">
-            <Calendar className="w-5 h-5 text-primary mb-2" />
-            <p className="text-xs text-muted-foreground">Дата покупки</p>
-            <p className="font-medium text-sm">{formatDate(warranty.purchase_date)}</p>
-          </div>
-          <div className="tg-card">
-            <Clock className="w-5 h-5 text-warning mb-2" />
-            <p className="text-xs text-muted-foreground">Действует до</p>
-            <p className="font-medium text-sm">{formatDate(warranty.expiry_date)}</p>
-          </div>
-        </div>
-
-        {/* Seller info */}
-        <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
-          <p className="tg-section-header">Продавец</p>
-          <div className="tg-card">
+        {/* Warranty dates */}
+        <div className="animate-slide-up">
+          <p className="tg-section-header">{t('warranty_period')}</p>
+          <div className="tg-card space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                <Store className="w-5 h-5" />
-              </div>
+              <Calendar className="w-5 h-5 text-muted-foreground" />
               <div>
-                <p className="font-medium">{warranty.seller_name}</p>
-                <p className="text-sm text-muted-foreground">Официальный продавец</p>
+                <p className="text-sm text-muted-foreground">Начало</p>
+                <p className="font-medium">{formatDate(warranty.start_date)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Calendar className="w-5 h-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Окончание</p>
+                <p className="font-medium">{formatDate(warranty.expiry_date)}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Service history */}
-        {serviceLogs.length > 0 && (
-          <div className="animate-slide-up" style={{ animationDelay: '150ms' }}>
-            <p className="tg-section-header">История обслуживания</p>
+        {warranty.services && warranty.services.length > 0 && (
+          <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+            <p className="tg-section-header">{t('technical_services')}</p>
             <div className="space-y-3">
-              {serviceLogs.map((log) => (
-                <div key={log.id} className="tg-card">
+              {warranty.services.map((service) => (
+                <div key={service.id} className="tg-card">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
-                      <Wrench className="w-5 h-5 text-accent-foreground" />
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                      <Wrench className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-medium">{log.problem}</p>
-                        <StatusBadge status={log.status} />
-                      </div>
-                      {log.solution && (
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {log.solution}
-                        </p>
+                      <p className="font-medium">{service.problem}</p>
+                      {service.solution && (
+                        <p className="text-sm text-muted-foreground">{service.solution}</p>
                       )}
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{formatDate(log.created_at)}</span>
-                        {log.is_warranty ? (
-                          <span className="text-success">По гарантии</span>
-                        ) : (
-                          <span>{log.price.toLocaleString('ru-RU')} ₽</span>
-                        )}
-                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDate(service.created_at)}
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -1,46 +1,46 @@
 import React, { useState } from 'react';
-import { Search, ShieldCheck, Filter } from 'lucide-react';
+import { Search, ShieldCheck, Loader2 } from 'lucide-react';
 import { Header } from '@/components/common/Header';
 import { BottomNav } from '@/components/common/BottomNav';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { mockWarranties, Warranty } from '@/lib/mockData';
+import { useApp } from '@/contexts/AppContext';
+import { useWarranties } from '@/hooks/useApi';
 import { hapticFeedback } from '@/lib/telegram';
+import { getTranslation } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
-type FilterType = 'all' | 'active' | 'expired';
+type StatusFilter = 'all' | 'active' | 'expired' | 'pending';
 
 export const SellerWarrantyList: React.FC = () => {
+  const { user, language } = useApp();
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
+  
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const filteredWarranties = mockWarranties.filter(w => {
-    const matchesSearch = 
-      w.product_name.toLowerCase().includes(search.toLowerCase()) ||
-      w.customer_name.toLowerCase().includes(search.toLowerCase()) ||
-      w.serial_number.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesFilter = 
-      filter === 'all' || w.status === filter;
-
-    return matchesSearch && matchesFilter;
+  const { data: warranties, isLoading } = useWarranties({
+    seller_id: user?.id,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    search: search || undefined,
   });
 
-  const handleFilterChange = (newFilter: FilterType) => {
-    hapticFeedback.selection();
-    setFilter(newFilter);
-  };
+  const filters: { id: StatusFilter; label: string }[] = [
+    { id: 'all', label: t('all') },
+    { id: 'active', label: t('status_active') },
+    { id: 'expired', label: t('status_expired') },
+    { id: 'pending', label: t('status_pending') },
+  ];
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
+    return new Date(dateString).toLocaleDateString(
+      language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US',
+      { day: 'numeric', month: 'short', year: 'numeric' }
+    );
   };
 
   return (
     <div className="tg-screen bg-background">
-      <Header title="Все гарантии" showBack />
+      <Header title={t('all_warranties')} showBack />
 
       <div className="p-4 space-y-4">
         {/* Search */}
@@ -50,83 +50,78 @@ export const SellerWarrantyList: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по названию, имени, серийному номеру..."
+            placeholder={t('search')}
             className="tg-input w-full pl-12"
           />
         </div>
 
-        {/* Filter tabs */}
+        {/* Status filters */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide animate-slide-up">
-          {(['all', 'active', 'expired'] as FilterType[]).map((f) => (
+          {filters.map(filter => (
             <button
-              key={f}
-              onClick={() => handleFilterChange(f)}
+              key={filter.id}
+              onClick={() => {
+                hapticFeedback.selection();
+                setStatusFilter(filter.id);
+              }}
               className={cn(
                 'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
-                filter === f
+                statusFilter === filter.id
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary text-secondary-foreground'
               )}
             >
-              {f === 'all' && 'Все'}
-              {f === 'active' && 'Активные'}
-              {f === 'expired' && 'Истёкшие'}
+              {filter.label}
             </button>
           ))}
         </div>
 
-        {/* Warranty list */}
-        <div className="space-y-3 animate-slide-up" style={{ animationDelay: '100ms' }}>
-          {filteredWarranties.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <ShieldCheck className="w-12 h-12 mx-auto mb-4 opacity-30" />
-              <p>Гарантии не найдены</p>
-            </div>
-          ) : (
-            filteredWarranties.map((warranty) => (
-              <WarrantyCard key={warranty.id} warranty={warranty} />
-            ))
-          )}
-        </div>
+        {/* List */}
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : warranties && warranties.length > 0 ? (
+          <div className="space-y-3">
+            {warranties.map((warranty, index) => (
+              <div
+                key={warranty.id}
+                className="tg-card-interactive animate-slide-up"
+                style={{ animationDelay: `${index * 50}ms` }}
+                onClick={() => hapticFeedback.light()}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="font-semibold truncate">{warranty.product_name}</h3>
+                      <StatusBadge status={warranty.status} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {warranty.customer_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      S/N: {warranty.serial_number}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(warranty.created_at)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="tg-card text-center py-12">
+            <ShieldCheck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">{t('empty')}</p>
+          </div>
+        )}
       </div>
 
       <BottomNav />
-    </div>
-  );
-};
-
-const WarrantyCard: React.FC<{ warranty: Warranty }> = ({ warranty }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  return (
-    <div
-      className="tg-card-interactive"
-      onClick={() => hapticFeedback.light()}
-    >
-      <div className="flex items-start gap-3">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <ShieldCheck className="w-6 h-6 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="font-semibold truncate">{warranty.product_name}</h3>
-            <StatusBadge status={warranty.status} />
-          </div>
-          <p className="text-sm text-muted-foreground mb-2">
-            {warranty.customer_name}
-          </p>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>S/N: {warranty.serial_number}</span>
-            <span>До: {formatDate(warranty.expiry_date)}</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle, Banknote, Check } from 'lucide-react';
+import { AlertCircle, CheckCircle, Banknote, Check, Loader2 } from 'lucide-react';
 import { Header } from '@/components/common/Header';
 import { BottomNav } from '@/components/common/BottomNav';
-import { ProductCodeInput } from '@/components/common/ProductCodeInput';
+import { useApp } from '@/contexts/AppContext';
+import { useWarrantyBySerial, useCreateService } from '@/hooks/useApi';
 import { hapticFeedback } from '@/lib/telegram';
+import { getTranslation } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { type ProductLookupResult } from '@/lib/productLookup';
 
 export const CreateServiceLog: React.FC = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const { language } = useApp();
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
+
   const [serialNumber, setSerialNumber] = useState('');
-  const [productFound, setProductFound] = useState(false);
-  const [warrantyInfo, setWarrantyInfo] = useState<ProductLookupResult['product'] | null>(null);
+  const [debouncedSerial, setDebouncedSerial] = useState('');
   const [formData, setFormData] = useState({
     problem: '',
     solution: '',
@@ -21,104 +23,144 @@ export const CreateServiceLog: React.FC = () => {
     price: '',
   });
 
+  const { data: warrantyCheck, isLoading: checkLoading, error: checkError } = useWarrantyBySerial(debouncedSerial);
+  const createService = useCreateService();
+
+  // Debounce serial number
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (serialNumber.length >= 5) {
+        setDebouncedSerial(serialNumber.toUpperCase());
+      } else {
+        setDebouncedSerial('');
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [serialNumber]);
+
+  // Auto-set warranty toggle
+  useEffect(() => {
+    if (warrantyCheck) {
+      const isActive = warrantyCheck.warranty_status === 'active';
+      setFormData(prev => ({
+        ...prev,
+        is_warranty: isActive,
+        price: isActive ? '0' : '',
+      }));
+      hapticFeedback.success();
+    }
+    if (checkError) hapticFeedback.error();
+  }, [warrantyCheck, checkError]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleWarrantyFound = (result: ProductLookupResult['product']) => {
-    if (result) {
-      setProductFound(true);
-      setWarrantyInfo(result);
-      // Auto-set warranty toggle based on warranty status
-      const isWarrantyActive = result.warranty_status === 'active';
-      setFormData(prev => ({ 
-        ...prev, 
-        is_warranty: isWarrantyActive,
-        price: isWarrantyActive ? '0' : ''
-      }));
-    }
-  };
-
-  const handleProductError = () => {
-    setProductFound(false);
-    setWarrantyInfo(null);
-  };
-
-  const handleProductClear = () => {
-    setProductFound(false);
-    setWarrantyInfo(null);
-    setFormData(prev => ({ ...prev, is_warranty: false, price: '' }));
-  };
-
   const toggleWarranty = () => {
-    // Only allow toggling if warranty is active
-    if (warrantyInfo?.warranty_status !== 'active') return;
-    
+    if (warrantyCheck?.warranty_status !== 'active') return;
     hapticFeedback.selection();
-    setFormData(prev => ({ 
-      ...prev, 
-      is_warranty: !prev.is_warranty, 
-      price: prev.is_warranty ? '' : '0' 
+    setFormData(prev => ({
+      ...prev,
+      is_warranty: !prev.is_warranty,
+      price: prev.is_warranty ? '' : '0',
     }));
   };
 
-  const isValid = productFound && warrantyInfo && formData.problem;
+  const isValid = warrantyCheck?.product && formData.problem;
 
   const handleSubmit = async () => {
     if (!isValid) return;
-
     hapticFeedback.medium();
-    setIsLoading(true);
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    hapticFeedback.success();
-    setIsLoading(false);
-    navigate('/technician/jobs');
+    try {
+      await createService.mutateAsync({
+        serial_number: debouncedSerial,
+        problem: formData.problem,
+        solution: formData.solution,
+        is_warranty: formData.is_warranty,
+        price: Number(formData.price) || 0,
+      });
+      hapticFeedback.success();
+      navigate('/technician/jobs');
+    } catch {
+      hapticFeedback.error();
+    }
   };
 
   return (
     <div className="tg-screen bg-background">
-      <Header title="Новая заявка" showBack />
+      <Header title={t('new_service')} showBack />
 
       <div className="p-4 space-y-4 pb-32">
-        {/* Serial number lookup */}
+        {/* Serial lookup */}
         <div className="animate-fade-in">
-          <ProductCodeInput
-            mode="warranty"
-            value={serialNumber}
-            onChange={setSerialNumber}
-            onWarrantyFound={handleWarrantyFound}
-            onError={handleProductError}
-            onClear={handleProductClear}
-            label="Серийный номер"
-            placeholder="DMPXK3JKXK"
-          />
+          <label className="block text-sm font-medium mb-2 text-muted-foreground">
+            {t('serial_number')}
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={serialNumber}
+              onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
+              placeholder="DMPXK3JKXK"
+              className={cn(
+                'tg-input w-full uppercase',
+                warrantyCheck && 'ring-2 ring-success',
+                checkError && 'ring-2 ring-destructive'
+              )}
+            />
+            {checkLoading && (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              </div>
+            )}
+          </div>
+
+          {warrantyCheck?.product && (
+            <div className={cn(
+              'mt-3 p-3 rounded-xl border animate-fade-in',
+              warrantyCheck.warranty_status === 'active'
+                ? 'bg-success/10 border-success/20'
+                : 'bg-warning/10 border-warning/20'
+            )}>
+              <p className="font-medium">{warrantyCheck.product.name}</p>
+              <p className={cn(
+                'text-sm',
+                warrantyCheck.warranty_status === 'active' ? 'text-success' : 'text-warning'
+              )}>
+                {warrantyCheck.warranty_status === 'active' ? t('status_active') : t('status_expired')}
+              </p>
+            </div>
+          )}
+
+          {checkError && debouncedSerial && (
+            <div className="mt-3 p-3 bg-destructive/10 rounded-xl border border-destructive/20 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-destructive" />
+              <p className="text-sm text-destructive">{t('product_not_found')}</p>
+            </div>
+          )}
         </div>
 
-        {/* Problem description - only show after product found */}
-        {productFound && warrantyInfo && (
+        {warrantyCheck?.product && (
           <>
-            <div className="animate-slide-up" style={{ animationDelay: '50ms' }}>
+            {/* Problem */}
+            <div className="animate-slide-up">
               <label className="block text-sm font-medium mb-2 text-muted-foreground">
-                Описание проблемы
+                {t('problem')}
               </label>
-              <div className="relative">
-                <AlertCircle className="absolute left-4 top-4 w-5 h-5 text-muted-foreground" />
-                <textarea
-                  name="problem"
-                  value={formData.problem}
-                  onChange={handleChange}
-                  placeholder="Опишите неисправность..."
-                  rows={3}
-                  className="tg-input w-full pl-12 pt-3 resize-none"
-                />
-              </div>
+              <textarea
+                name="problem"
+                value={formData.problem}
+                onChange={handleChange}
+                placeholder="Опишите неисправность..."
+                rows={3}
+                className="tg-input w-full resize-none"
+              />
             </div>
 
-            {/* Warranty toggle - only if warranty is active */}
-            <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+            {/* Warranty toggle */}
+            <div className="animate-slide-up">
               <label className="block text-sm font-medium mb-2 text-muted-foreground">
                 Тип ремонта
               </label>
@@ -126,71 +168,67 @@ export const CreateServiceLog: React.FC = () => {
                 <button
                   type="button"
                   onClick={toggleWarranty}
-                  disabled={warrantyInfo.warranty_status !== 'active'}
+                  disabled={warrantyCheck.warranty_status !== 'active'}
                   className={cn(
-                    'tg-card flex items-center justify-center gap-2 py-4 transition-all',
-                    formData.is_warranty ? 'ring-2 ring-primary bg-primary/5' : '',
-                    warrantyInfo.warranty_status !== 'active' && 'opacity-50 cursor-not-allowed'
+                    'tg-card flex items-center justify-center gap-2 py-4',
+                    formData.is_warranty && 'ring-2 ring-primary bg-primary/5',
+                    warrantyCheck.warranty_status !== 'active' && 'opacity-50'
                   )}
                 >
                   <CheckCircle className={cn('w-5 h-5', formData.is_warranty ? 'text-primary' : 'text-muted-foreground')} />
-                  <span className={formData.is_warranty ? 'font-medium' : ''}>Гарантия</span>
+                  <span>{t('warranty_repair')}</span>
                 </button>
                 <button
                   type="button"
                   onClick={toggleWarranty}
-                  disabled={warrantyInfo.warranty_status !== 'active'}
+                  disabled={warrantyCheck.warranty_status !== 'active'}
                   className={cn(
-                    'tg-card flex items-center justify-center gap-2 py-4 transition-all',
-                    !formData.is_warranty ? 'ring-2 ring-primary bg-primary/5' : ''
+                    'tg-card flex items-center justify-center gap-2 py-4',
+                    !formData.is_warranty && 'ring-2 ring-primary bg-primary/5'
                   )}
                 >
                   <Banknote className={cn('w-5 h-5', !formData.is_warranty ? 'text-primary' : 'text-muted-foreground')} />
-                  <span className={!formData.is_warranty ? 'font-medium' : ''}>Платный</span>
+                  <span>{t('paid_repair')}</span>
                 </button>
               </div>
             </div>
 
-            {/* Price (if not warranty) */}
+            {/* Price */}
             {!formData.is_warranty && (
               <div className="animate-fade-in">
                 <label className="block text-sm font-medium mb-2 text-muted-foreground">
-                  Стоимость ремонта (сум)
+                  {t('repair_cost')} (сум)
                 </label>
-                <div className="relative">
-                  <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleChange}
-                    placeholder="500000"
-                    className="tg-input w-full pl-12"
-                  />
-                </div>
+                <input
+                  type="number"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  placeholder="500000"
+                  className="tg-input w-full"
+                />
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Submit button */}
-      {productFound && (
+      {warrantyCheck?.product && (
         <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background to-transparent pt-8">
           <button
             onClick={handleSubmit}
-            disabled={!isValid || isLoading}
+            disabled={!isValid || createService.isPending}
             className={cn(
               'tg-button-primary w-full flex items-center justify-center gap-2',
-              (!isValid || isLoading) && 'opacity-50 cursor-not-allowed'
+              (!isValid || createService.isPending) && 'opacity-50'
             )}
           >
-            {isLoading ? (
-              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            {createService.isPending ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
                 <Check className="w-5 h-5" />
-                Создать заявку
+                {t('create_service')}
               </>
             )}
           </button>
