@@ -104,11 +104,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
     try {
       const response = await authApi.telegramAuth({
-        telegram_id: telegramUser.id,
         phone,
-        firstname: telegramUser.first_name,
-        lastname: telegramUser.last_name,
-        language,
       });
 
       setAuthStatus(response.status);

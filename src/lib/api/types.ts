@@ -7,11 +7,7 @@ export type ServiceStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled
 
 // Auth
 export interface TelegramAuthRequest {
-  telegram_id: number;
   phone: string;
-  firstname: string;
-  lastname?: string;
-  language: string;
 }
 
 export interface AuthResponse {
