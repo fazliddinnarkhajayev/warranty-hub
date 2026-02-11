@@ -42,14 +42,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [telegramUser, setTelegramUser] = useState<{ id: number; first_name: string; last_name?: string; phone?: string } | null>(null);
 
   useEffect(() => {
-    // Initialize Telegram WebApp
     initTelegramWebApp();
 
-    // Detect language from Telegram
     const detectedLang = detectLanguage();
     setLanguage(detectedLang);
 
-    // Get Telegram user info
     const tgUser = getTelegramUser();
     if (tgUser) {
       setTelegramUser({
@@ -59,27 +56,18 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       });
     }
 
-    // Check theme from Telegram
     const webApp = getTelegramWebApp();
     if (webApp?.colorScheme === 'dark') {
       setTheme('dark');
       document.documentElement.classList.add('dark');
     }
 
-    // Try to load saved user from localStorage
     const savedUser = localStorage.getItem("warranty_bot_user");
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser) as User;
         setUser(parsed);
         setAuthStatus(parsed.status);
-        if (parsed.theme === 'dark') {
-          setTheme('dark');
-          document.documentElement.classList.add('dark');
-        }
-        if (parsed.language) {
-          setLanguage(parsed.language as Language);
-        }
       } catch (e) {
         console.error("Failed to parse saved user:", e);
       }
@@ -88,7 +76,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setIsLoading(false);
   }, []);
 
-  // Update theme on document
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -98,20 +85,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   }, [theme]);
 
   const checkAuth = async (phone: string): Promise<AuthStatus> => {
-    if (!telegramUser) {
-      throw new Error('Telegram user not available');
-    }
-
     try {
-      const response = await authApi.telegramAuth({
-        phone,
-      });
+      const response = await authApi.telegramAuth({ phone });
 
       setAuthStatus(response.status);
 
-      if (response.status === 'approved' && response.user) {
+      if (response.status === 'CREATED' && response.user && response.token) {
         setUser(response.user);
         localStorage.setItem("warranty_bot_user", JSON.stringify(response.user));
+        localStorage.setItem("warranty_bot_token", response.token);
       }
 
       return response.status;
@@ -125,6 +107,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setUser(null);
     setAuthStatus(null);
     localStorage.removeItem("warranty_bot_user");
+    localStorage.removeItem("warranty_bot_token");
   };
 
   return (
@@ -149,5 +132,4 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   );
 };
 
-// Re-export types for backward compatibility
 export type { UserRole } from "@/lib/api/types";

@@ -17,7 +17,7 @@ const roles: { id: UserRole; icon: React.ReactNode; labelKey: 'seller' | 'custom
 export const RegisterForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { telegramUser, language, setUser, setAuthStatus } = useApp();
+  const { telegramUser, language, setAuthStatus } = useApp();
   const registerMutation = useRegister();
   const { data: regions, isLoading: regionsLoading } = useRegions();
   
@@ -25,15 +25,15 @@ export const RegisterForm: React.FC = () => {
   
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [formData, setFormData] = useState({
-    firstname: telegramUser?.first_name || '',
-    lastname: telegramUser?.last_name || '',
+    first_name: telegramUser?.first_name || '',
+    last_name: telegramUser?.last_name || '',
     company: '',
-    region: '',
-    district: '',
+    region_id: '',
+    district_id: '',
   });
   const [error, setError] = useState('');
 
-  const { data: districts, isLoading: districtsLoading } = useDistricts(formData.region || undefined);
+  const { data: districts, isLoading: districtsLoading } = useDistricts(formData.region_id || undefined);
 
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
@@ -47,16 +47,14 @@ export const RegisterForm: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Reset district when region changes
-    if (name === 'region') {
-      setFormData(prev => ({ ...prev, district: '' }));
+    if (name === 'region_id') {
+      setFormData(prev => ({ ...prev, district_id: '' }));
     }
   };
 
   const isValid = () => {
-    if (!selectedRole || !formData.firstname) return false;
-    if (needsCompanyInfo && (!formData.company || !formData.region || !formData.district)) {
+    if (!selectedRole || !formData.first_name) return false;
+    if (needsCompanyInfo && (!formData.company || !formData.region_id || !formData.district_id)) {
       return false;
     }
     return true;
@@ -69,30 +67,22 @@ export const RegisterForm: React.FC = () => {
     setError('');
 
     try {
-      const response = await registerMutation.mutateAsync({
+      await registerMutation.mutateAsync({
         telegram_id: telegramUser.id,
         phone,
-        firstname: formData.firstname,
-        lastname: formData.lastname,
-        language,
+        first_name: formData.first_name,
+        last_name: formData.last_name || undefined,
         role: selectedRole,
         ...(needsCompanyInfo && {
           company: formData.company,
-          region: formData.region,
-          district: formData.district,
+          region_id: Number(formData.region_id),
+          district_id: Number(formData.district_id),
         }),
       });
 
-      if (response.status === 'pending') {
-        setAuthStatus('pending');
-        hapticFeedback.success();
-        navigate('/pending');
-      } else if (response.status === 'approved' && response.user) {
-        setUser(response.user);
-        setAuthStatus('approved');
-        hapticFeedback.success();
-        localStorage.setItem("warranty_bot_user", JSON.stringify(response.user));
-      }
+      setAuthStatus('REQUESTED');
+      hapticFeedback.success();
+      navigate('/pending');
     } catch (err: any) {
       setError(err.message || t('network_error'));
       hapticFeedback.error();
@@ -102,13 +92,11 @@ export const RegisterForm: React.FC = () => {
   return (
     <div className="min-h-screen bg-background p-6 pb-32">
       <div className="max-w-sm mx-auto space-y-6 animate-fade-in">
-        {/* Header */}
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">{t('register')}</h1>
           <p className="text-muted-foreground">{t('select_role')}</p>
         </div>
 
-        {/* Role selection */}
         <div className="grid grid-cols-3 gap-3">
           {roles.map(role => (
             <button
@@ -137,38 +125,31 @@ export const RegisterForm: React.FC = () => {
           ))}
         </div>
 
-        {/* Form fields */}
         {selectedRole && (
           <div className="space-y-4 animate-slide-up">
-            {/* Name fields */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium mb-2 text-muted-foreground">
-                  Имя
-                </label>
+                <label className="block text-sm font-medium mb-2 text-muted-foreground">Имя</label>
                 <input
                   type="text"
-                  name="firstname"
-                  value={formData.firstname}
+                  name="first_name"
+                  value={formData.first_name}
                   onChange={handleChange}
                   className="tg-input w-full"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2 text-muted-foreground">
-                  Фамилия
-                </label>
+                <label className="block text-sm font-medium mb-2 text-muted-foreground">Фамилия</label>
                 <input
                   type="text"
-                  name="lastname"
-                  value={formData.lastname}
+                  name="last_name"
+                  value={formData.last_name}
                   onChange={handleChange}
                   className="tg-input w-full"
                 />
               </div>
             </div>
 
-            {/* Company info for seller/technician */}
             {needsCompanyInfo && (
               <>
                 <div>
@@ -192,8 +173,8 @@ export const RegisterForm: React.FC = () => {
                     {t('region')}
                   </label>
                   <select
-                    name="region"
-                    value={formData.region}
+                    name="region_id"
+                    value={formData.region_id}
                     onChange={handleChange}
                     disabled={regionsLoading}
                     className="tg-input w-full appearance-none"
@@ -207,14 +188,14 @@ export const RegisterForm: React.FC = () => {
                   </select>
                 </div>
 
-                {formData.region && (
+                {formData.region_id && (
                   <div className="animate-fade-in">
                     <label className="block text-sm font-medium mb-2 text-muted-foreground">
                       {t('district')}
                     </label>
                     <select
-                      name="district"
-                      value={formData.district}
+                      name="district_id"
+                      value={formData.district_id}
                       onChange={handleChange}
                       disabled={districtsLoading}
                       className="tg-input w-full appearance-none"
@@ -231,14 +212,12 @@ export const RegisterForm: React.FC = () => {
               </>
             )}
 
-            {/* Error */}
             {error && (
               <p className="text-sm text-destructive text-center">{error}</p>
             )}
           </div>
         )}
 
-        {/* Submit button */}
         {selectedRole && (
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background to-transparent pt-8">
             <button

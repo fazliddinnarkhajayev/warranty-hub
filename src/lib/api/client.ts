@@ -1,11 +1,16 @@
 // API Client for warranty_bot backend
 
-const API_BASE_URL = 'http://167.86.94.200:3000/api/v1/mobile';
+const API_BASE_URL = 'http://167.86.94.200:3000/api/v1';
 
-export interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-  message?: string;
+// Backend wraps all responses in this envelope
+export interface ApiEnvelope<T> {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: T;
+  path: string;
+  method: string;
+  timestamp: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -26,6 +31,11 @@ export class ApiError extends Error {
   }
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('warranty_bot_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -36,6 +46,7 @@ async function request<T>(
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...options.headers,
     },
   };
@@ -52,11 +63,15 @@ async function request<T>(
       );
     }
 
-    // Handle empty responses
     const text = await response.text();
     if (!text) return {} as T;
     
-    return JSON.parse(text);
+    const json = JSON.parse(text);
+    // Unwrap the backend envelope
+    if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
+      return json.data as T;
+    }
+    return json;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(

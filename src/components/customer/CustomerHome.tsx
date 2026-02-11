@@ -15,9 +15,9 @@ export const CustomerHome: React.FC = () => {
   
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
   
-  const { data: stats, isLoading: statsLoading, error: statsError } = useCustomerStats(user?.id);
+  const { data: stats, isLoading: statsLoading, error: statsError } = useCustomerStats(user?.id?.toString());
   const { data: warranties, isLoading: warrantiesLoading } = useWarranties({ 
-    customer_id: user?.id 
+    customer_id: user?.id?.toString() 
   });
 
   const myWarranties = warranties?.slice(0, 3) || [];
@@ -61,7 +61,7 @@ export const CustomerHome: React.FC = () => {
       <div className="p-4 space-y-6">
         {/* Welcome */}
         <div className="animate-fade-in">
-          <h2 className="text-xl font-bold">{t('welcome')}, {user?.firstname}! 👋</h2>
+          <h2 className="text-xl font-bold">{t('welcome')}, {user?.first_name}! 👋</h2>
           <p className="text-muted-foreground text-sm">
             {stats?.active_warranties || 0} {t('active_warranties').toLowerCase()}
           </p>

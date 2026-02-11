@@ -19,7 +19,7 @@ export const SellerWarrantyList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const { data: warranties, isLoading } = useWarranties({
-    seller_id: user?.id,
+    seller_id: user?.id?.toString(),
     status: statusFilter !== 'all' ? statusFilter : undefined,
     search: search || undefined,
   });

@@ -16,7 +16,7 @@ export const CustomerServices: React.FC = () => {
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
   
   const { data: services, isLoading } = useServices({ 
-    customer_id: user?.id 
+    customer_id: user?.id?.toString() 
   });
 
   const formatDate = (dateString: string) => {
