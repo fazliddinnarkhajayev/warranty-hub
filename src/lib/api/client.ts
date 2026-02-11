@@ -1,6 +1,6 @@
 // API Client for warranty_bot backend
 
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+const API_BASE_URL = 'http://167.86.94.200:3000/api/v1/mobile';
 
 export interface ApiResponse<T> {
   data?: T;
