@@ -1,7 +1,7 @@
 // API Types for warranty_bot
 
 export type UserRole = 'seller' | 'customer' | 'technician';
-export type AuthStatus = 'approved' | 'pending' | 'not_found';
+export type AuthStatus = 'CREATED' | 'REQUESTED' | 'NOT_FOUND';
 export type WarrantyStatus = 'active' | 'expired' | 'pending';
 export type ServiceStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -19,38 +19,33 @@ export interface AuthResponse {
 export interface RegisterRequest {
   telegram_id: number;
   phone: string;
-  firstname: string;
-  lastname?: string;
-  language: string;
+  first_name: string;
+  last_name?: string;
   role: UserRole;
   company?: string;
-  region?: string;
-  district?: string;
+  region_id?: number;
+  district_id?: number;
 }
 
 // User
 export interface User {
-  id: string;
-  telegram_id: number;
+  id: number;
+  telegram_id: string;
   phone: string;
-  firstname: string;
-  lastname?: string;
+  first_name: string;
+  last_name?: string;
   role: UserRole;
   company?: string;
-  region?: string;
-  district?: string;
-  language: string;
-  theme: 'light' | 'dark';
+  region_id?: number;
+  district_id?: number;
+  created_by?: number | null;
   status: AuthStatus;
   created_at: string;
-  updated_at: string;
 }
 
 export interface UserUpdateRequest {
-  firstname?: string;
-  lastname?: string;
-  language?: string;
-  theme?: 'light' | 'dark';
+  first_name?: string;
+  last_name?: string;
 }
 
 // Product

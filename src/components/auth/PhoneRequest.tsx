@@ -17,19 +17,16 @@ export const PhoneRequest: React.FC = () => {
 
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
-  // Try to request contact from Telegram
   useEffect(() => {
     const webApp = getTelegramWebApp();
     if (webApp && 'requestContact' in webApp) {
       setIsRequestingContact(true);
-      // Telegram WebApp 6.9+ has requestContact
       try {
         (webApp as any).requestContact((success: boolean, contact: any) => {
           setIsRequestingContact(false);
           if (success && contact?.phone_number) {
             const formattedPhone = formatUzbekPhone(contact.phone_number);
             setPhone(formattedPhone);
-            // Auto-submit if we got a valid phone
             if (isValidUzbekPhone(formattedPhone)) {
               handleSubmit(formattedPhone);
             }
@@ -63,15 +60,14 @@ export const PhoneRequest: React.FC = () => {
     try {
       const status = await checkAuth(phoneNumber);
       
-      if (status === 'approved') {
+      if (status === 'CREATED') {
         hapticFeedback.success();
-        // Will redirect based on role in App.tsx
-      } else if (status === 'pending') {
+      } else if (status === 'REQUESTED') {
         hapticFeedback.warning();
         navigate('/pending');
       } else {
-        // not_found - go to registration
-        setAuthStatus('not_found');
+        // NOT_FOUND - go to registration
+        setAuthStatus('NOT_FOUND');
         navigate('/register', { state: { phone: phoneNumber } });
       }
     } catch (err) {
@@ -96,7 +92,6 @@ export const PhoneRequest: React.FC = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
-        {/* Welcome */}
         <div className="text-center">
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <Phone className="w-10 h-10 text-primary" />
@@ -109,7 +104,6 @@ export const PhoneRequest: React.FC = () => {
           )}
         </div>
 
-        {/* Phone input */}
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2 text-muted-foreground">

@@ -23,24 +23,16 @@ export const Profile: React.FC = () => {
 
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
-  const handleThemeToggle = async () => {
+  const handleThemeToggle = () => {
     hapticFeedback.selection();
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    
-    if (user) {
-      await updateUser.mutateAsync({ id: user.id, data: { theme: newTheme } });
-    }
   };
 
-  const handleLanguageChange = async (lang: Language) => {
+  const handleLanguageChange = (lang: Language) => {
     hapticFeedback.selection();
     setLanguage(lang);
     setShowLanguages(false);
-    
-    if (user) {
-      await updateUser.mutateAsync({ id: user.id, data: { language: lang } });
-    }
   };
 
   const handleLogout = () => {
@@ -49,7 +41,7 @@ export const Profile: React.FC = () => {
     navigate('/');
   };
 
-  const fullName = user ? `${user.firstname} ${user.lastname || ''}`.trim() : '';
+  const fullName = user ? `${user.first_name} ${user.last_name || ''}`.trim() : '';
 
   return (
     <div className="tg-screen bg-background">

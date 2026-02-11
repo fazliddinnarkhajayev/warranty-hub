@@ -10,7 +10,7 @@ export const SellerStats: React.FC = () => {
   const { user, language } = useApp();
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
   
-  const { data: stats, isLoading } = useSellerStats(user?.id);
+  const { data: stats, isLoading } = useSellerStats(user?.id?.toString());
 
   if (isLoading) {
     return (

@@ -15,9 +15,9 @@ export const TechnicianHome: React.FC = () => {
   
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
   
-  const { data: stats, isLoading: statsLoading, error: statsError } = useTechnicianStats(user?.id);
+  const { data: stats, isLoading: statsLoading, error: statsError } = useTechnicianStats(user?.id?.toString());
   const { data: services, isLoading: servicesLoading } = useServices({ 
-    technician_id: user?.id 
+    technician_id: user?.id?.toString() 
   });
 
   const pendingJobs = services?.filter(j => j.status === 'pending' || j.status === 'in_progress').slice(0, 3) || [];
@@ -61,7 +61,7 @@ export const TechnicianHome: React.FC = () => {
       <div className="p-4 space-y-6">
         {/* Welcome */}
         <div className="animate-fade-in">
-          <h2 className="text-xl font-bold">{t('welcome')}, {user?.firstname}! 🔧</h2>
+          <h2 className="text-xl font-bold">{t('welcome')}, {user?.first_name}! 🔧</h2>
           <p className="text-muted-foreground text-sm">
             {(stats?.pending_services || 0) + (stats?.in_progress_services || 0)} {t('active_jobs').toLowerCase()}
           </p>
