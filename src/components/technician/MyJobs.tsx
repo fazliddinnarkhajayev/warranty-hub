@@ -1,28 +1,28 @@
 import React, { useState } from 'react';
-import { Wrench, Search } from 'lucide-react';
+import { Wrench, Search, Loader2 } from 'lucide-react';
 import { Header } from '@/components/common/Header';
 import { BottomNav } from '@/components/common/BottomNav';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { mockServiceLogs, ServiceLog } from '@/lib/mockData';
+import { useApp } from '@/contexts/AppContext';
+import { useServices } from '@/hooks/useApi';
 import { hapticFeedback } from '@/lib/telegram';
+import { getTranslation } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import type { Service } from '@/lib/api/types';
 
 type FilterType = 'all' | 'pending' | 'in_progress' | 'completed';
 
 export const MyJobs: React.FC = () => {
+  const { user, language } = useApp();
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
+  
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
 
-  const filteredJobs = mockServiceLogs.filter(job => {
-    const matchesSearch =
-      job.product_name.toLowerCase().includes(search.toLowerCase()) ||
-      job.customer_name.toLowerCase().includes(search.toLowerCase()) ||
-      job.problem.toLowerCase().includes(search.toLowerCase());
-
-    const matchesFilter =
-      filter === 'all' || job.status === filter;
-
-    return matchesSearch && matchesFilter;
+  const { data: services, isLoading } = useServices({
+    technician_id: user?.id?.toString(),
+    status: filter !== 'all' ? filter : undefined,
+    search: search || undefined,
   });
 
   const handleFilterChange = (newFilter: FilterType) => {
@@ -30,16 +30,9 @@ export const MyJobs: React.FC = () => {
     setFilter(newFilter);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'short',
-    });
-  };
-
   return (
     <div className="tg-screen bg-background">
-      <Header title="Мои заявки" showBack />
+      <Header title={t('all_services')} showBack />
 
       <div className="p-4 space-y-4">
         {/* Search */}
@@ -49,7 +42,7 @@ export const MyJobs: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по названию, клиенту, проблеме..."
+            placeholder={t('search')}
             className="tg-input w-full pl-12"
           />
         </div>
@@ -67,27 +60,33 @@ export const MyJobs: React.FC = () => {
                   : 'bg-secondary text-secondary-foreground'
               )}
             >
-              {f === 'all' && 'Все'}
-              {f === 'pending' && 'Ожидают'}
-              {f === 'in_progress' && 'В работе'}
-              {f === 'completed' && 'Выполнено'}
+              {f === 'all' && t('all')}
+              {f === 'pending' && t('pending')}
+              {f === 'in_progress' && t('in_progress')}
+              {f === 'completed' && t('completed')}
             </button>
           ))}
         </div>
 
         {/* Jobs list */}
-        <div className="space-y-3 animate-slide-up" style={{ animationDelay: '100ms' }}>
-          {filteredJobs.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Wrench className="w-12 h-12 mx-auto mb-4 opacity-30" />
-              <p>Заявки не найдены</p>
-            </div>
-          ) : (
-            filteredJobs.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))
-          )}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="space-y-3 animate-slide-up" style={{ animationDelay: '100ms' }}>
+            {!services || services.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Wrench className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                <p>{t('empty')}</p>
+              </div>
+            ) : (
+              services.map((job) => (
+                <JobCard key={job.id} job={job} language={language} />
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       <BottomNav />
@@ -95,12 +94,18 @@ export const MyJobs: React.FC = () => {
   );
 };
 
-const JobCard: React.FC<{ job: ServiceLog }> = ({ job }) => {
+const JobCard: React.FC<{ job: Service; language: string }> = ({ job, language }) => {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'short',
-    });
+    return new Date(dateString).toLocaleDateString(
+      language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US',
+      { day: 'numeric', month: 'short' }
+    );
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat(
+      language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US'
+    ).format(price);
   };
 
   return (
@@ -126,7 +131,7 @@ const JobCard: React.FC<{ job: ServiceLog }> = ({ job }) => {
             {job.is_warranty ? (
               <span className="text-success">Гарантия</span>
             ) : (
-              <span>{job.price.toLocaleString('ru-RU')} ₽</span>
+              <span>{formatPrice(job.price)} сум</span>
             )}
           </div>
         </div>
