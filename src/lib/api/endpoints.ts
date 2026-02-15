@@ -22,10 +22,10 @@ import type {
 // Auth endpoints
 export const authApi = {
   telegramAuth: (data: TelegramAuthRequest) =>
-    api.post<AuthResponse>('/auth/mobile/telegram/session', data),
+    api.post<AuthResponse>('/auth/telegram/session', data),
   
   register: (data: RegisterRequest) =>
-    api.post<{ success: boolean }>('/auth/mobile/telegram/register', data),
+    api.post<{ success: boolean }>('/auth/telegram/register', data),
 };
 
 // Users endpoints
