@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 
 export const CreateServiceLog: React.FC = () => {
   const navigate = useNavigate();
-  const { language } = useApp();
+  const { language, user } = useApp();
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
   const [serialNumber, setSerialNumber] = useState('');
@@ -70,16 +70,17 @@ export const CreateServiceLog: React.FC = () => {
   const isValid = warrantyCheck?.product && formData.problem;
 
   const handleSubmit = async () => {
-    if (!isValid) return;
+    if (!isValid || !warrantyCheck?.product) return;
     hapticFeedback.medium();
 
     try {
       await createService.mutateAsync({
-        serial_number: debouncedSerial,
+        product_id: warrantyCheck.product.id,
         problem: formData.problem,
         solution: formData.solution,
         is_warranty: formData.is_warranty,
         price: Number(formData.price) || 0,
+        technician_id: String(user?.id || ''),
       });
       hapticFeedback.success();
       navigate('/technician/jobs');
