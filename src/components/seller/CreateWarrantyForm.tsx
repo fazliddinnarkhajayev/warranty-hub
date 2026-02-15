@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Hash, User, Phone, Calendar, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Phone, Check, Loader2, AlertCircle } from 'lucide-react';
 import { Header } from '@/components/common/Header';
 import { BottomNav } from '@/components/common/BottomNav';
 import { useApp } from '@/contexts/AppContext';
@@ -14,15 +14,11 @@ export const CreateWarrantyForm: React.FC = () => {
   const navigate = useNavigate();
   const { language } = useApp();
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
+  const { user } = useApp();
 
   const [productCode, setProductCode] = useState('');
   const [debouncedCode, setDebouncedCode] = useState('');
-  const [formData, setFormData] = useState({
-    serial_number: '',
-    customer_name: '',
-    customer_phone: '',
-    warranty_period: 12,
-  });
+  const [phone, setPhone] = useState('');
 
   const { data: product, isLoading: productLoading, error: productError } = useProductByCode(debouncedCode);
   const createWarranty = useCreateWarranty();
@@ -45,17 +41,12 @@ export const CreateWarrantyForm: React.FC = () => {
     if (productError) hapticFeedback.error();
   }, [product, productError]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatUzbekPhone(e.target.value);
-    setFormData(prev => ({ ...prev, customer_phone: formatted }));
+    setPhone(formatted);
   };
 
-  const isValid = product && formData.serial_number && formData.customer_name && isValidUzbekPhone(formData.customer_phone);
+  const isValid = product && isValidUzbekPhone(phone);
 
   const handleSubmit = async () => {
     if (!isValid || !product) return;
@@ -64,11 +55,9 @@ export const CreateWarrantyForm: React.FC = () => {
 
     try {
       await createWarranty.mutateAsync({
-        product_code: product.code,
-        serial_number: formData.serial_number.toUpperCase(),
-        customer_name: formData.customer_name,
-        customer_phone: formData.customer_phone,
-        warranty_period: Number(formData.warranty_period),
+        product_id: product.id,
+        phone: phone,
+        seller_id: String(user?.id || ''),
       });
 
       hapticFeedback.success();
@@ -126,49 +115,9 @@ export const CreateWarrantyForm: React.FC = () => {
           )}
         </div>
 
-        {/* Serial number - only show after product found */}
-        {product && (
-          <div className="animate-slide-up">
-            <label className="block text-sm font-medium mb-2 text-muted-foreground">
-              {t('serial_number')}
-            </label>
-            <div className="relative">
-              <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input
-                type="text"
-                name="serial_number"
-                value={formData.serial_number}
-                onChange={handleChange}
-                placeholder="DMPXK3JKXK"
-                className="tg-input w-full pl-12 uppercase"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Customer name */}
-        {product && (
-          <div className="animate-slide-up" style={{ animationDelay: '50ms' }}>
-            <label className="block text-sm font-medium mb-2 text-muted-foreground">
-              {t('customer_name')}
-            </label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input
-                type="text"
-                name="customer_name"
-                value={formData.customer_name}
-                onChange={handleChange}
-                placeholder="Имя Фамилия"
-                className="tg-input w-full pl-12"
-              />
-            </div>
-          </div>
-        )}
-
         {/* Customer phone */}
         {product && (
-          <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+          <div className="animate-slide-up" style={{ animationDelay: '50ms' }}>
             <label className="block text-sm font-medium mb-2 text-muted-foreground">
               {t('customer_phone')}
             </label>
@@ -176,35 +125,11 @@ export const CreateWarrantyForm: React.FC = () => {
               <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="tel"
-                name="customer_phone"
-                value={formData.customer_phone}
+                value={phone}
                 onChange={handlePhoneChange}
                 placeholder={UZBEK_PHONE_PLACEHOLDER}
                 className="tg-input w-full pl-12"
               />
-            </div>
-          </div>
-        )}
-
-        {/* Warranty period */}
-        {product && (
-          <div className="animate-slide-up" style={{ animationDelay: '150ms' }}>
-            <label className="block text-sm font-medium mb-2 text-muted-foreground">
-              {t('warranty_period')}
-            </label>
-            <div className="relative">
-              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <select
-                name="warranty_period"
-                value={formData.warranty_period}
-                onChange={handleChange}
-                className="tg-input w-full pl-12 appearance-none"
-              >
-                <option value="6">6 {t('months')}</option>
-                <option value="12">12 {t('months')}</option>
-                <option value="24">24 {t('months')}</option>
-                <option value="36">36 {t('months')}</option>
-              </select>
             </div>
           </div>
         )}

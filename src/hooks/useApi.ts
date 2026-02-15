@@ -148,20 +148,19 @@ export const useCreateWarranty = () => {
         return await warrantiesApi.create(data);
       } catch {
         console.warn('[API Fallback] Simulating warranty creation');
-        const product = fallbackProducts[data.product_code.toUpperCase()];
         const now = new Date().toISOString();
         const expiry = new Date();
-        expiry.setMonth(expiry.getMonth() + data.warranty_period);
+        expiry.setMonth(expiry.getMonth() + 12);
         return {
           id: String(Date.now()),
-          product_id: product?.id || '0',
-          product_code: data.product_code,
-          product_name: product?.name || data.product_code,
-          serial_number: data.serial_number,
-          seller_id: '1', seller_name: 'Test',
-          customer_name: data.customer_name,
-          customer_phone: data.customer_phone,
-          warranty_period: data.warranty_period,
+          product_id: data.product_id,
+          product_code: '',
+          product_name: 'Test Product',
+          serial_number: '',
+          seller_id: data.seller_id, seller_name: 'Test',
+          customer_name: 'Test',
+          customer_phone: data.phone,
+          warranty_period: 12,
           status: 'active' as const,
           start_date: now.split('T')[0],
           expiry_date: expiry.toISOString().split('T')[0],
@@ -219,23 +218,22 @@ export const useCreateService = () => {
         return await servicesApi.create(data);
       } catch {
         console.warn('[API Fallback] Simulating service creation');
-        const warranty = fallbackWarranties.find(w => w.serial_number.toUpperCase() === data.serial_number.toUpperCase());
         const now = new Date().toISOString();
         return {
           id: String(Date.now()),
-          warranty_id: warranty?.id,
-          product_code: warranty?.product_code || '',
-          product_name: warranty?.product_name || 'Unknown',
-          serial_number: data.serial_number,
-          technician_id: '1', technician_name: 'Test',
-          customer_name: warranty?.customer_name || '',
-          customer_phone: warranty?.customer_phone || '',
+          warranty_id: undefined,
+          product_code: '',
+          product_name: 'Unknown',
+          serial_number: '',
+          technician_id: data.technician_id, technician_name: 'Test',
+          customer_name: '',
+          customer_phone: '',
           problem: data.problem,
           solution: data.solution,
           is_warranty: data.is_warranty,
           price: data.price,
           status: 'pending' as const,
-          warranty_status: warranty?.status === 'active' ? 'active' as const : 'expired' as const,
+          warranty_status: 'none' as const,
           created_at: now, updated_at: now,
         };
       }

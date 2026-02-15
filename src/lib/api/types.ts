@@ -80,11 +80,9 @@ export interface Warranty {
 }
 
 export interface CreateWarrantyRequest {
-  product_code: string;
-  serial_number: string;
-  customer_name: string;
-  customer_phone: string;
-  warranty_period: number;
+  product_id: string;
+  phone: string;
+  seller_id: string;
 }
 
 // Service
@@ -109,11 +107,12 @@ export interface Service {
 }
 
 export interface CreateServiceRequest {
-  serial_number: string;
+  product_id: string;
   problem: string;
   solution?: string;
-  is_warranty: boolean;
   price: number;
+  technician_id: string;
+  is_warranty: boolean;
 }
 
 // Stats
