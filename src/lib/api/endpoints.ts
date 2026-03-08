@@ -2,8 +2,8 @@
 
 import api from './client';
 import type {
-  TelegramAuthRequest,
-  AuthResponse,
+  LoginRequest,
+  LoginResponse,
   RegisterRequest,
   User,
   UserUpdateRequest,
@@ -21,9 +21,12 @@ import type {
 
 // Auth endpoints
 export const authApi = {
-  telegramAuth: (data: TelegramAuthRequest) =>
-    api.post<AuthResponse>('/auth/telegram/session', data),
-  
+  login: (data: LoginRequest) =>
+    api.post<LoginResponse>('/auth/mobile/phone', data),
+
+  getMe: () =>
+    api.get<User>('/auth/me'),
+
   register: (data: RegisterRequest) =>
     api.post<{ success: boolean }>('/auth/telegram/register', data),
 };
@@ -32,7 +35,7 @@ export const authApi = {
 export const usersApi = {
   getUser: (id: string) =>
     api.get<User>(`/users/${id}`),
-  
+
   updateUser: (id: string, data: UserUpdateRequest) =>
     api.put<User>(`/users/${id}`, data),
 };
@@ -41,7 +44,7 @@ export const usersApi = {
 export const productsApi = {
   getByCode: (code: string) =>
     api.get<Product>(`/products/${code}`),
-  
+
   checkWarrantyBySerial: (serial: string) =>
     api.get<{ product: Product; warranty?: Warranty; warranty_status: 'active' | 'expired' | 'none' }>(
       `/products/serial/${serial}`
@@ -59,10 +62,10 @@ export const warrantiesApi = {
     const query = searchParams.toString();
     return api.get<Warranty[]>(`/warranties${query ? `?${query}` : ''}`);
   },
-  
+
   getById: (id: string) =>
     api.get<Warranty>(`/warranties/${id}`),
-  
+
   create: (data: CreateWarrantyRequest) =>
     api.post<Warranty>('/warranties', data),
 };
@@ -78,10 +81,10 @@ export const servicesApi = {
     const query = searchParams.toString();
     return api.get<Service[]>(`/services${query ? `?${query}` : ''}`);
   },
-  
+
   getById: (id: string) =>
     api.get<Service>(`/services/${id}`),
-  
+
   create: (data: CreateServiceRequest) =>
     api.post<Service>('/services', data),
 };
@@ -90,10 +93,10 @@ export const servicesApi = {
 export const statsApi = {
   getSeller: (id: string) =>
     api.get<SellerStats>(`/stats/seller/${id}`),
-  
+
   getCustomer: (id: string) =>
     api.get<CustomerStats>(`/stats/customer/${id}`),
-  
+
   getTechnician: (id: string) =>
     api.get<TechnicianStats>(`/stats/technician/${id}`),
 };
@@ -102,7 +105,7 @@ export const statsApi = {
 export const regionsApi = {
   getAll: () =>
     api.get<Region[]>('/regions'),
-  
+
   getDistricts: (regionId: string) =>
     api.get<District[]>(`/regions/${regionId}/districts`),
 };

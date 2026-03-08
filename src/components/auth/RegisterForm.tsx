@@ -6,24 +6,24 @@ import { useRegister, useRegions, useDistricts } from '@/hooks/useApi';
 import { hapticFeedback } from '@/lib/telegram';
 import { getTranslation } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import type { UserRole } from '@/lib/api/types';
+import type { UserType } from '@/lib/api/types';
 
-const roles: { id: UserRole; icon: React.ReactNode; labelKey: 'seller' | 'customer' | 'technician' }[] = [
-  { id: 'seller', icon: <Store className="w-6 h-6" />, labelKey: 'seller' },
-  { id: 'customer', icon: <User className="w-6 h-6" />, labelKey: 'customer' },
-  { id: 'technician', icon: <Wrench className="w-6 h-6" />, labelKey: 'technician' },
+const types: { id: UserType; icon: React.ReactNode; labelKey: 'seller' | 'customer' | 'technician' }[] = [
+  { id: 'SELLER', icon: <Store className="w-6 h-6" />, labelKey: 'seller' },
+  { id: 'CUSTOMER', icon: <User className="w-6 h-6" />, labelKey: 'customer' },
+  { id: 'TECHNICIAN', icon: <Wrench className="w-6 h-6" />, labelKey: 'technician' },
 ];
 
 export const RegisterForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { telegramUser, language, setAuthStatus } = useApp();
+  const { telegramUser, language } = useApp();
   const registerMutation = useRegister();
   const { data: regions, isLoading: regionsLoading } = useRegions();
   
   const phone = (location.state as any)?.phone || '';
   
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [selectedType, setSelectedType] = useState<UserType | null>(null);
   const [formData, setFormData] = useState({
     first_name: telegramUser?.first_name || '',
     last_name: telegramUser?.last_name || '',
@@ -37,11 +37,11 @@ export const RegisterForm: React.FC = () => {
 
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
-  const needsCompanyInfo = selectedRole === 'seller' || selectedRole === 'technician';
+  const needsCompanyInfo = selectedType === 'SELLER' || selectedType === 'TECHNICIAN';
 
-  const handleRoleSelect = (role: UserRole) => {
+  const handleTypeSelect = (type: UserType) => {
     hapticFeedback.selection();
-    setSelectedRole(role);
+    setSelectedType(type);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -53,7 +53,7 @@ export const RegisterForm: React.FC = () => {
   };
 
   const isValid = () => {
-    if (!selectedRole || !formData.first_name) return false;
+    if (!selectedType || !formData.first_name) return false;
     if (needsCompanyInfo && (!formData.company || !formData.region_id || !formData.district_id)) {
       return false;
     }
@@ -61,7 +61,7 @@ export const RegisterForm: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!isValid() || !telegramUser || !selectedRole) return;
+    if (!isValid() || !telegramUser || !selectedType) return;
 
     hapticFeedback.medium();
     setError('');
@@ -72,7 +72,7 @@ export const RegisterForm: React.FC = () => {
         phone,
         first_name: formData.first_name,
         last_name: formData.last_name || undefined,
-        role: selectedRole,
+        type: selectedType,
         ...(needsCompanyInfo && {
           company: formData.company,
           region_id: Number(formData.region_id),
@@ -80,7 +80,6 @@ export const RegisterForm: React.FC = () => {
         }),
       });
 
-      setAuthStatus('REQUESTED');
       hapticFeedback.success();
       navigate('/pending');
     } catch (err: any) {
@@ -98,34 +97,34 @@ export const RegisterForm: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          {roles.map(role => (
+          {types.map(item => (
             <button
-              key={role.id}
-              onClick={() => handleRoleSelect(role.id)}
+              key={item.id}
+              onClick={() => handleTypeSelect(item.id)}
               className={cn(
                 'tg-card flex flex-col items-center gap-2 py-4 transition-all',
-                selectedRole === role.id
+                selectedType === item.id
                   ? 'ring-2 ring-primary bg-primary/5'
                   : 'hover:bg-secondary/50'
               )}
             >
               <div className={cn(
                 'w-12 h-12 rounded-xl flex items-center justify-center transition-colors',
-                selectedRole === role.id ? 'bg-primary/10 text-primary' : 'bg-secondary'
+                selectedType === item.id ? 'bg-primary/10 text-primary' : 'bg-secondary'
               )}>
-                {role.icon}
+                {item.icon}
               </div>
               <span className={cn(
                 'text-sm',
-                selectedRole === role.id && 'font-medium'
+                selectedType === item.id && 'font-medium'
               )}>
-                {t(role.labelKey)}
+                {t(item.labelKey)}
               </span>
             </button>
           ))}
         </div>
 
-        {selectedRole && (
+        {selectedType && (
           <div className="space-y-4 animate-slide-up">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -218,7 +217,7 @@ export const RegisterForm: React.FC = () => {
           </div>
         )}
 
-        {selectedRole && (
+        {selectedType && (
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background to-transparent pt-8">
             <button
               onClick={handleSubmit}

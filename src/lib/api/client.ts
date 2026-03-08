@@ -1,24 +1,47 @@
-// API Client for warranty_bot backend
+// API Client for warranty_bot backend using Axios
 
-const API_BASE_URL = 'http://167.86.94.200:3000/api/v1';
+import axios from 'axios';
 
-// Backend wraps all responses in this envelope
-export interface ApiEnvelope<T> {
-  success: boolean;
-  statusCode: number;
-  message: string;
-  data: T;
-  path: string;
-  method: string;
-  timestamp: string;
-}
+const API_BASE_URL = 'https://api.warranty-hub.com/api';
 
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-}
+export const axiosClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Interceptor: attach Bearer token
+axiosClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('warranty_bot_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Interceptor: unwrap envelope & handle auth errors
+axiosClient.interceptors.response.use(
+  (response) => {
+    const data = response.data;
+    // Unwrap backend envelope if present
+    if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+      return { ...response, data: data.data };
+    }
+    return response;
+  },
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('warranty_bot_token');
+      localStorage.removeItem('warranty_bot_user');
+      // Redirect to login
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export class ApiError extends Error {
   constructor(
@@ -31,72 +54,26 @@ export class ApiError extends Error {
   }
 }
 
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('warranty_bot_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  const config: RequestInit = {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders(),
-      ...options.headers,
-    },
-  };
-
-  try {
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(
-        errorData.message || errorData.error || `HTTP ${response.status}`,
-        response.status,
-        errorData.code
-      );
-    }
-
-    const text = await response.text();
-    if (!text) return {} as T;
-    
-    const json = JSON.parse(text);
-    // Unwrap the backend envelope
-    if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
-      return json.data as T;
-    }
-    return json;
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      error instanceof Error ? error.message : 'Network error',
-      0
-    );
-  }
-}
-
 export const api = {
-  get: <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' }),
-  
-  post: <T>(endpoint: string, data?: unknown) =>
-    request<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    }),
-  
-  put: <T>(endpoint: string, data?: unknown) =>
-    request<T>(endpoint, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    }),
-  
-  delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
+  get: async <T>(endpoint: string): Promise<T> => {
+    const res = await axiosClient.get<T>(endpoint);
+    return res.data;
+  },
+
+  post: async <T>(endpoint: string, data?: unknown): Promise<T> => {
+    const res = await axiosClient.post<T>(endpoint, data);
+    return res.data;
+  },
+
+  put: async <T>(endpoint: string, data?: unknown): Promise<T> => {
+    const res = await axiosClient.put<T>(endpoint, data);
+    return res.data;
+  },
+
+  delete: async <T>(endpoint: string): Promise<T> => {
+    const res = await axiosClient.delete<T>(endpoint);
+    return res.data;
+  },
 };
 
 export default api;

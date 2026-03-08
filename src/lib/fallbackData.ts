@@ -3,20 +3,18 @@
 import type {
   User, Warranty, Service, Product,
   SellerStats, CustomerStats, TechnicianStats,
-  Region, District, AuthResponse,
+  Region, District,
 } from './api/types';
 
 export const fallbackUser: User = {
-  id: 1,
-  telegram_id: '123456789',
+  id: 'test-user-1',
+  type: 'SELLER',
   phone: '+998 94 643-76-76',
   first_name: 'Test',
   last_name: 'User',
-  role: 'seller',
   company: 'Test Store',
   region_id: 1,
   district_id: 1,
-  status: 'CREATED',
   created_at: '2024-01-01T00:00:00Z',
 };
 

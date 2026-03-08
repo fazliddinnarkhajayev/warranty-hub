@@ -1,22 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { getTelegramUser, initTelegramWebApp, getTelegramWebApp } from "@/lib/telegram";
 import { authApi } from "@/lib/api";
-import type { User, AuthStatus, UserRole } from "@/lib/api/types";
+import type { User, UserType } from "@/lib/api/types";
 import { detectLanguage, type Language } from "@/lib/i18n";
 
 interface AppContextType {
   user: User | null;
   isLoading: boolean;
-  authStatus: AuthStatus | null;
+  isAuthenticated: boolean;
   language: Language;
   theme: 'light' | 'dark';
   telegramUser: { id: number; first_name: string; last_name?: string; phone?: string } | null;
   setUser: (user: User | null) => void;
-  setAuthStatus: (status: AuthStatus) => void;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   logout: () => void;
-  checkAuth: (phone: string) => Promise<AuthStatus>;
+  login: (phone: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -36,11 +35,13 @@ interface AppProviderProps {
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [language, setLanguage] = useState<Language>('ru');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [telegramUser, setTelegramUser] = useState<{ id: number; first_name: string; last_name?: string; phone?: string } | null>(null);
 
+  const isAuthenticated = !!user;
+
+  // On app start: restore session
   useEffect(() => {
     initTelegramWebApp();
 
@@ -62,18 +63,34 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       document.documentElement.classList.add('dark');
     }
 
-    const savedUser = localStorage.getItem("warranty_bot_user");
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser) as User;
-        setUser(parsed);
-        setAuthStatus(parsed.status);
-      } catch (e) {
-        console.error("Failed to parse saved user:", e);
+    // Try to restore session from token
+    const token = localStorage.getItem("warranty_bot_token");
+    if (token) {
+      authApi.getMe()
+        .then((userData) => {
+          setUser(userData);
+          localStorage.setItem("warranty_bot_user", JSON.stringify(userData));
+        })
+        .catch(() => {
+          // Token invalid/expired — clear everything
+          localStorage.removeItem("warranty_bot_token");
+          localStorage.removeItem("warranty_bot_user");
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      // No token — try cached user as fallback
+      const savedUser = localStorage.getItem("warranty_bot_user");
+      if (savedUser) {
+        try {
+          setUser(JSON.parse(savedUser) as User);
+        } catch {
+          // ignore
+        }
       }
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -84,35 +101,36 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   }, [theme]);
 
-  const checkAuth = async (phone: string): Promise<AuthStatus> => {
+  const login = async (phone: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await authApi.telegramAuth({ phone });
+      const response = await authApi.login({ phone });
 
-      setAuthStatus(response.status);
-
-      if (response.status === 'CREATED' && response.user && response.token) {
-        setUser(response.user);
+      if (response.success && response.access_token && response.user) {
+        localStorage.setItem("warranty_bot_token", response.access_token);
         localStorage.setItem("warranty_bot_user", JSON.stringify(response.user));
-        localStorage.setItem("warranty_bot_token", response.token);
+        setUser(response.user);
+        return { success: true };
       }
 
-      return response.status;
-    } catch (error) {
-      console.warn('[API Fallback] Auth failed, using test user:', error);
-      // Fallback: create a test session so the app stays usable
-      const { fallbackUser } = await import('@/lib/fallbackData');
-      const testUser: User = { ...fallbackUser, phone };
-      setUser(testUser);
-      setAuthStatus('CREATED');
-      localStorage.setItem("warranty_bot_user", JSON.stringify(testUser));
-      localStorage.setItem("warranty_bot_token", "test-fallback-token");
-      return 'CREATED';
+      return { success: false, error: 'User not found' };
+    } catch (error: any) {
+      console.warn('[Auth] Login failed:', error);
+      // Fallback for development
+      try {
+        const { fallbackUser } = await import('@/lib/fallbackData');
+        const testUser: User = { ...fallbackUser, phone };
+        setUser(testUser);
+        localStorage.setItem("warranty_bot_user", JSON.stringify(testUser));
+        localStorage.setItem("warranty_bot_token", "test-fallback-token");
+        return { success: true };
+      } catch {
+        return { success: false, error: error?.response?.data?.message || 'Network error' };
+      }
     }
   };
 
   const logout = () => {
     setUser(null);
-    setAuthStatus(null);
     localStorage.removeItem("warranty_bot_user");
     localStorage.removeItem("warranty_bot_token");
   };
@@ -122,16 +140,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       value={{
         user,
         isLoading,
-        authStatus,
+        isAuthenticated,
         language,
         theme,
         telegramUser,
         setUser,
-        setAuthStatus,
         setLanguage,
         setTheme,
         logout,
-        checkAuth,
+        login,
       }}
     >
       {children}
@@ -139,4 +156,4 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   );
 };
 
-export type { UserRole } from "@/lib/api/types";
+export type { UserType } from "@/lib/api/types";
