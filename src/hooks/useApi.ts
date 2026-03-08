@@ -77,7 +77,7 @@ export const useProductByCode = (code: string | undefined) => {
     queryKey: ['product', code],
     queryFn: () => withFallback(
       () => productsApi.getByCode(code!),
-      fallbackProducts[code!.toUpperCase()] || (() => { throw new Error('Not found'); })()
+      fallbackProducts[code!.toUpperCase()] || null as any
     ),
     enabled: !!code && code.length >= 3,
     retry: false,
