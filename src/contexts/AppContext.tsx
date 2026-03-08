@@ -105,27 +105,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     try {
       const response = await authApi.login({ phone });
 
-      if (response.success && response.access_token && response.user) {
+      if (response.success && response.access_token) {
         localStorage.setItem("warranty_bot_token", response.access_token);
-        localStorage.setItem("warranty_bot_user", JSON.stringify(response.user));
-        setUser(response.user);
+
+        // Fetch full user object via /auth/me
+        const userData = await authApi.getMe();
+        localStorage.setItem("warranty_bot_user", JSON.stringify(userData));
+        setUser(userData);
         return { success: true };
       }
 
       return { success: false, error: 'User not found' };
     } catch (error: any) {
       console.warn('[Auth] Login failed:', error);
-      // Fallback for development
-      try {
-        const { fallbackUser } = await import('@/lib/fallbackData');
-        const testUser: User = { ...fallbackUser, phone };
-        setUser(testUser);
-        localStorage.setItem("warranty_bot_user", JSON.stringify(testUser));
-        localStorage.setItem("warranty_bot_token", "test-fallback-token");
-        return { success: true };
-      } catch {
-        return { success: false, error: error?.response?.data?.message || 'Network error' };
-      }
+      return { success: false, error: error?.response?.data?.message || 'Network error' };
     }
   };
 

@@ -13,7 +13,6 @@ export interface LoginRequest {
 export interface LoginResponse {
   success: boolean;
   access_token: string;
-  user: User;
 }
 
 export interface RegisterRequest {
