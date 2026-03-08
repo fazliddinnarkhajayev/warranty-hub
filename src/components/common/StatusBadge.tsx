@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface StatusBadgeProps {
-  status: 'active' | 'expired' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: string;
   className?: string;
 }
 
