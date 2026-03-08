@@ -20,7 +20,8 @@ export const TechnicianHome: React.FC = () => {
     technician_id: user?.id?.toString() 
   });
 
-  const pendingJobs = services?.filter(j => j.status === 'pending' || j.status === 'in_progress').slice(0, 3) || [];
+  const serviceList = Array.isArray(services) ? services : [];
+  const pendingJobs = serviceList.filter(j => j.status === 'pending' || j.status === 'in_progress').slice(0, 3);
 
   const handleQuickAction = (path: string) => {
     hapticFeedback.light();

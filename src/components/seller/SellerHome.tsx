@@ -20,7 +20,7 @@ export const SellerHome: React.FC = () => {
     seller_id: user?.id?.toString() 
   });
 
-  const recentWarranties = warranties?.slice(0, 3) || [];
+  const recentWarranties = Array.isArray(warranties) ? warranties.slice(0, 3) : [];
 
   const handleQuickAction = (path: string) => {
     hapticFeedback.light();
