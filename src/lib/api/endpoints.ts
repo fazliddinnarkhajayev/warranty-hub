@@ -17,6 +17,7 @@ import type {
   TechnicianStats,
   Region,
   District,
+  PaginatedResponse,
 } from './types';
 
 // Auth endpoints
@@ -42,8 +43,27 @@ export const usersApi = {
 
 // Products endpoints
 export const productsApi = {
+  getAll: (params?: { page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+    const query = searchParams.toString();
+    return api.get<PaginatedResponse<Product>>(`/products${query ? `?${query}` : ''}`);
+  },
+
+  getById: (id: string) =>
+    api.get<Product>(`/products/${id}`),
+
   getByCode: (code: string) =>
     api.get<Product>(`/products/${code}`),
+
+  getByType: (productTypeId: string, params?: { page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+    const query = searchParams.toString();
+    return api.get<PaginatedResponse<Product>>(`/products/product-type/${productTypeId}${query ? `?${query}` : ''}`);
+  },
 
   checkWarrantyBySerial: (serial: string) =>
     api.get<{ product: Product; warranty?: Warranty; warranty_status: 'active' | 'expired' | 'none' }>(
@@ -53,14 +73,16 @@ export const productsApi = {
 
 // Warranties endpoints
 export const warrantiesApi = {
-  getAll: (params?: { seller_id?: string; customer_id?: string; status?: string; search?: string }) => {
+  getAll: (params?: { page?: number; limit?: number; seller_id?: string; customer_id?: string; status?: string; search?: string }) => {
     const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
     if (params?.seller_id) searchParams.append('seller_id', params.seller_id);
     if (params?.customer_id) searchParams.append('customer_id', params.customer_id);
     if (params?.status) searchParams.append('status', params.status);
     if (params?.search) searchParams.append('search', params.search);
     const query = searchParams.toString();
-    return api.get<Warranty[]>(`/warranties${query ? `?${query}` : ''}`);
+    return api.get<PaginatedResponse<Warranty>>(`/warranties${query ? `?${query}` : ''}`);
   },
 
   getById: (id: string) =>
@@ -68,18 +90,34 @@ export const warrantiesApi = {
 
   create: (data: CreateWarrantyRequest) =>
     api.post<Warranty>('/warranties', data),
+
+  activate: (id: string) =>
+    api.put<Warranty>(`/warranties/${id}/activate`, {}),
+
+  getMyWarranties: (params?: { page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+    const query = searchParams.toString();
+    return api.get<PaginatedResponse<Warranty>>(`/warranties/my-warranties/customer${query ? `?${query}` : ''}`);
+  },
+
+  getByProduct: (productId: string) =>
+    api.get<Warranty[]>(`/warranties/product/${productId}`),
 };
 
 // Services endpoints
 export const servicesApi = {
-  getAll: (params?: { technician_id?: string; customer_id?: string; status?: string; search?: string }) => {
+  getAll: (params?: { page?: number; limit?: number; technician_id?: string; customer_id?: string; status?: string; search?: string }) => {
     const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
     if (params?.technician_id) searchParams.append('technician_id', params.technician_id);
     if (params?.customer_id) searchParams.append('customer_id', params.customer_id);
     if (params?.status) searchParams.append('status', params.status);
     if (params?.search) searchParams.append('search', params.search);
     const query = searchParams.toString();
-    return api.get<Service[]>(`/services${query ? `?${query}` : ''}`);
+    return api.get<PaginatedResponse<Service>>(`/services${query ? `?${query}` : ''}`);
   },
 
   getById: (id: string) =>
@@ -87,6 +125,30 @@ export const servicesApi = {
 
   create: (data: CreateServiceRequest) =>
     api.post<Service>('/services', data),
+
+  getByProduct: (productId: string, params?: { page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+    const query = searchParams.toString();
+    return api.get<PaginatedResponse<Service>>(`/services/product/${productId}${query ? `?${query}` : ''}`);
+  },
+
+  getWarrantyServices: (productId: string, params?: { page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+    const query = searchParams.toString();
+    return api.get<PaginatedResponse<Service>>(`/services/product/${productId}/warranty${query ? `?${query}` : ''}`);
+  },
+
+  getPaidServices: (productId: string, params?: { page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+    const query = searchParams.toString();
+    return api.get<PaginatedResponse<Service>>(`/services/product/${productId}/paid${query ? `?${query}` : ''}`);
+  },
 };
 
 // Stats endpoints
