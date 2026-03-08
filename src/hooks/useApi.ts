@@ -77,7 +77,7 @@ export const useProductByCode = (code: string | undefined) => {
     queryKey: ['product', code],
     queryFn: () => withFallback(
       () => productsApi.getByCode(code!),
-      fallbackProducts[code!.toUpperCase()] || (() => { throw new Error('Not found'); })()
+      fallbackProducts[code!.toUpperCase()] || null as any
     ),
     enabled: !!code && code.length >= 3,
     retry: false,
@@ -93,10 +93,10 @@ export const useWarrantyBySerial = (serial: string | undefined) => {
         product: fallbackProducts[fb.product_code] || { id: fb.product_id, code: fb.product_code, name: fb.product_name, warranty_months: fb.warranty_period },
         warranty: fb,
         warranty_status: fb.status === 'active' ? 'active' as const : 'expired' as const,
-      } : undefined;
+      } : null;
       return withFallback(
         () => productsApi.checkWarrantyBySerial(serial!),
-        fallback || (() => { throw new Error('Not found'); })()
+        fallback as any
       );
     },
     enabled: !!serial && serial.length >= 5,

@@ -34,11 +34,12 @@ axiosClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('warranty_bot_token');
       localStorage.removeItem('warranty_bot_user');
-      // Redirect to login
       if (window.location.pathname !== '/') {
         window.location.href = '/';
       }
     }
+    // Log but don't crash — let withFallback handle it
+    console.warn('[API Error]', error?.response?.status, error?.config?.url);
     return Promise.reject(error);
   }
 );
