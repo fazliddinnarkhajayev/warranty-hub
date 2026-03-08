@@ -16,7 +16,8 @@ const statusConfig = {
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) => {
-  const config = statusConfig[status] || statusConfig.pending;
+  const normalizedStatus = status?.toLowerCase().replace(/ /g, '_') as keyof typeof statusConfig;
+  const config = statusConfig[normalizedStatus] || statusConfig.pending;
 
   return (
     <span className={cn(config.className, className)}>
