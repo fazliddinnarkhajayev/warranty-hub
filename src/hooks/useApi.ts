@@ -11,7 +11,7 @@ import {
   regionsApi,
 } from '@/lib/api';
 import type {
-  TelegramAuthRequest,
+  LoginRequest,
   RegisterRequest,
   UserUpdateRequest,
   CreateWarrantyRequest,
@@ -39,9 +39,9 @@ async function withFallback<T>(apiFn: () => Promise<T>, fallback: T): Promise<T>
 }
 
 // Auth hooks
-export const useTelegramAuth = () => {
+export const useLogin = () => {
   return useMutation({
-    mutationFn: (data: TelegramAuthRequest) => authApi.telegramAuth(data),
+    mutationFn: (data: LoginRequest) => authApi.login(data),
   });
 };
 
