@@ -46,9 +46,9 @@ export const BottomNav: React.FC = () => {
     switch (user?.type) {
       case 'SELLER':
         return sellerNav;
-      case 'customer':
+      case 'CUSTOMER':
         return customerNav;
-      case 'technician':
+      case 'TECHNICIAN':
         return technicianNav;
       default:
         return [];

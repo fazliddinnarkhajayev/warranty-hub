@@ -39,23 +39,23 @@ const LoadingScreen = () => (
   </div>
 );
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({
+const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedTypes?: string[] }> = ({
   children,
-  allowedRoles,
+  allowedTypes,
 }) => {
-  const { user, authStatus } = useApp();
+  const { user, isAuthenticated } = useApp();
 
-  if (!user || authStatus !== 'CREATED') {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    switch (user.role) {
-      case 'seller':
+  if (allowedTypes && !allowedTypes.includes(user.type)) {
+    switch (user.type) {
+      case 'SELLER':
         return <Navigate to="/seller" replace />;
-      case 'customer':
+      case 'CUSTOMER':
         return <Navigate to="/customer" replace />;
-      case 'technician':
+      case 'TECHNICIAN':
         return <Navigate to="/technician" replace />;
       default:
         return <Navigate to="/" replace />;
@@ -66,19 +66,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
 };
 
 const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, authStatus } = useApp();
+  const { user, isAuthenticated } = useApp();
 
-  if (authStatus === 'REQUESTED') {
-    return <Navigate to="/pending" replace />;
-  }
-
-  if (user && authStatus === 'CREATED') {
-    switch (user.role) {
-      case 'seller':
+  if (user && isAuthenticated) {
+    switch (user.type) {
+      case 'SELLER':
         return <Navigate to="/seller" replace />;
-      case 'customer':
+      case 'CUSTOMER':
         return <Navigate to="/customer" replace />;
-      case 'technician':
+      case 'TECHNICIAN':
         return <Navigate to="/technician" replace />;
     }
   }
@@ -99,20 +95,20 @@ const AppRoutes = () => {
       <Route path="/pending" element={<PendingScreen />} />
       <Route path="/register" element={<RegisterForm />} />
 
-      <Route path="/seller" element={<ProtectedRoute allowedRoles={['seller']}><SellerHome /></ProtectedRoute>} />
-      <Route path="/seller/create" element={<ProtectedRoute allowedRoles={['seller']}><CreateWarrantyForm /></ProtectedRoute>} />
-      <Route path="/seller/warranties" element={<ProtectedRoute allowedRoles={['seller']}><SellerWarrantyList /></ProtectedRoute>} />
-      <Route path="/seller/stats" element={<ProtectedRoute allowedRoles={['seller']}><SellerStats /></ProtectedRoute>} />
+      <Route path="/seller" element={<ProtectedRoute allowedTypes={['SELLER']}><SellerHome /></ProtectedRoute>} />
+      <Route path="/seller/create" element={<ProtectedRoute allowedTypes={['SELLER']}><CreateWarrantyForm /></ProtectedRoute>} />
+      <Route path="/seller/warranties" element={<ProtectedRoute allowedTypes={['SELLER']}><SellerWarrantyList /></ProtectedRoute>} />
+      <Route path="/seller/stats" element={<ProtectedRoute allowedTypes={['SELLER']}><SellerStats /></ProtectedRoute>} />
 
-      <Route path="/customer" element={<ProtectedRoute allowedRoles={['customer']}><CustomerHome /></ProtectedRoute>} />
-      <Route path="/customer/warranties" element={<ProtectedRoute allowedRoles={['customer']}><MyWarranties /></ProtectedRoute>} />
-      <Route path="/customer/warranty/:id" element={<ProtectedRoute allowedRoles={['customer']}><WarrantyDetails /></ProtectedRoute>} />
-      <Route path="/customer/services" element={<ProtectedRoute allowedRoles={['customer']}><CustomerServices /></ProtectedRoute>} />
+      <Route path="/customer" element={<ProtectedRoute allowedTypes={['CUSTOMER']}><CustomerHome /></ProtectedRoute>} />
+      <Route path="/customer/warranties" element={<ProtectedRoute allowedTypes={['CUSTOMER']}><MyWarranties /></ProtectedRoute>} />
+      <Route path="/customer/warranty/:id" element={<ProtectedRoute allowedTypes={['CUSTOMER']}><WarrantyDetails /></ProtectedRoute>} />
+      <Route path="/customer/services" element={<ProtectedRoute allowedTypes={['CUSTOMER']}><CustomerServices /></ProtectedRoute>} />
 
-      <Route path="/technician" element={<ProtectedRoute allowedRoles={['technician']}><TechnicianHome /></ProtectedRoute>} />
-      <Route path="/technician/create" element={<ProtectedRoute allowedRoles={['technician']}><CreateServiceLog /></ProtectedRoute>} />
-      <Route path="/technician/jobs" element={<ProtectedRoute allowedRoles={['technician']}><MyJobs /></ProtectedRoute>} />
-      <Route path="/technician/stats" element={<ProtectedRoute allowedRoles={['technician']}><TechnicianStats /></ProtectedRoute>} />
+      <Route path="/technician" element={<ProtectedRoute allowedTypes={['TECHNICIAN']}><TechnicianHome /></ProtectedRoute>} />
+      <Route path="/technician/create" element={<ProtectedRoute allowedTypes={['TECHNICIAN']}><CreateServiceLog /></ProtectedRoute>} />
+      <Route path="/technician/jobs" element={<ProtectedRoute allowedTypes={['TECHNICIAN']}><MyJobs /></ProtectedRoute>} />
+      <Route path="/technician/stats" element={<ProtectedRoute allowedTypes={['TECHNICIAN']}><TechnicianStats /></ProtectedRoute>} />
 
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 
 export const PhoneRequest: React.FC = () => {
   const navigate = useNavigate();
-  const { telegramUser, language, checkAuth, setAuthStatus } = useApp();
+  const { telegramUser, language, login } = useApp();
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -58,17 +58,14 @@ export const PhoneRequest: React.FC = () => {
     hapticFeedback.medium();
 
     try {
-      const status = await checkAuth(phoneNumber);
+      const result = await login(phoneNumber);
       
-      if (status === 'CREATED') {
+      if (result.success) {
         hapticFeedback.success();
-      } else if (status === 'REQUESTED') {
-        hapticFeedback.warning();
-        navigate('/pending');
+        // Navigation is handled by AuthRoute redirect
       } else {
-        // NOT_FOUND - go to registration
-        setAuthStatus('NOT_FOUND');
-        navigate('/register', { state: { phone: phoneNumber } });
+        setError(result.error || 'User not found');
+        hapticFeedback.error();
       }
     } catch (err) {
       setError(t('network_error'));
