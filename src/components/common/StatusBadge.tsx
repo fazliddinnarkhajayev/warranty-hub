@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface StatusBadgeProps {
-  status: 'active' | 'expired' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: string;
   className?: string;
 }
 
@@ -16,7 +16,8 @@ const statusConfig = {
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) => {
-  const config = statusConfig[status] || statusConfig.pending;
+  const normalizedStatus = status?.toLowerCase().replace(/ /g, '_') as keyof typeof statusConfig;
+  const config = statusConfig[normalizedStatus] || statusConfig.pending;
 
   return (
     <span className={cn(config.className, className)}>

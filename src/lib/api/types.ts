@@ -3,7 +3,19 @@
 export type UserType = 'CUSTOMER' | 'SELLER' | 'TECHNICIAN';
 export type AuthStatus = 'CREATED' | 'REQUESTED' | 'NOT_FOUND';
 export type WarrantyStatus = 'active' | 'expired' | 'pending';
-export type ServiceStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type ServiceStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type ServiceType = 'REPAIR' | 'MAINTENANCE' | 'INSPECTION' | 'REPLACEMENT';
+
+// Paginated response envelope
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages?: number;
+  };
+}
 
 // Auth
 export interface LoginRequest {
@@ -47,31 +59,41 @@ export interface UserUpdateRequest {
 // Product
 export interface Product {
   id: string;
-  code: string;
+  code?: string;
   name: string;
+  product_type_id?: string;
+  description?: string;
+  price?: number;
   category?: string;
   brand?: string;
-  warranty_months: number;
+  warranty_months?: number;
+  warranty_period_months?: number;
+  is_active?: boolean;
+  created_at?: string;
 }
 
 // Warranty
 export interface Warranty {
   id: string;
   product_id: string;
-  product_code: string;
-  product_name: string;
+  product_code?: string;
+  product_name?: string;
   serial_number: string;
-  seller_id: string;
+  warranty_expiry?: string;
+  is_active?: boolean;
+  customer_user_id?: string | null;
+  seller_user_id?: string;
+  seller_id?: string;
   seller_name?: string;
   customer_id?: string;
-  customer_name: string;
-  customer_phone: string;
-  warranty_period: number;
-  status: WarrantyStatus;
-  start_date: string;
-  expiry_date: string;
-  created_at: string;
-  updated_at: string;
+  customer_name?: string;
+  customer_phone?: string;
+  warranty_period?: number;
+  status?: WarrantyStatus;
+  start_date?: string;
+  expiry_date?: string;
+  created_at?: string;
+  updated_at?: string;
   services?: Service[];
 }
 
@@ -84,22 +106,28 @@ export interface CreateWarrantyRequest {
 // Service
 export interface Service {
   id: string;
+  product_id?: string;
   warranty_id?: string;
-  product_code: string;
-  product_name: string;
-  serial_number: string;
-  technician_id: string;
+  product_code?: string;
+  product_name?: string;
+  serial_number?: string;
+  technician_id?: string;
+  technician_user_id?: string;
   technician_name?: string;
-  customer_name: string;
-  customer_phone: string;
-  problem: string;
+  customer_name?: string;
+  customer_phone?: string;
+  service_type?: ServiceType;
+  problem?: string;
+  description?: string;
   solution?: string;
-  is_warranty: boolean;
-  price: number;
+  is_warranty?: boolean;
+  is_warranty_covered?: boolean;
+  cost?: number;
+  price?: number;
   status: ServiceStatus;
   warranty_status?: 'active' | 'expired' | 'none';
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreateServiceRequest {

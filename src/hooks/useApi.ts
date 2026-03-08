@@ -16,6 +16,8 @@ import type {
   UserUpdateRequest,
   CreateWarrantyRequest,
   CreateServiceRequest,
+  Warranty,
+  Service,
 } from '@/lib/api';
 import {
   fallbackWarranties,
@@ -36,6 +38,17 @@ async function withFallback<T>(apiFn: () => Promise<T>, fallback: T): Promise<T>
     console.warn('[API Fallback] Using test data:', error);
     return fallback;
   }
+}
+
+// Helper: extract array from paginated response or raw array
+function extractArray<T>(data: unknown): T[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'object' && data !== null && 'data' in data) {
+    const inner = (data as any).data;
+    return Array.isArray(inner) ? inner : [];
+  }
+  return [];
 }
 
 // Auth hooks
@@ -88,9 +101,9 @@ export const useWarrantyBySerial = (serial: string | undefined) => {
   return useQuery({
     queryKey: ['warranty-check', serial],
     queryFn: () => {
-      const fb = fallbackWarranties.find(w => w.serial_number.toUpperCase() === serial!.toUpperCase());
+      const fb = fallbackWarranties.find(w => w.serial_number?.toUpperCase() === serial!.toUpperCase());
       const fallback = fb ? {
-        product: fallbackProducts[fb.product_code] || { id: fb.product_id, code: fb.product_code, name: fb.product_name, warranty_months: fb.warranty_period },
+        product: fallbackProducts[fb.product_code || ''] || { id: fb.product_id, code: fb.product_code, name: fb.product_name, warranty_months: fb.warranty_period },
         warranty: fb,
         warranty_status: fb.status === 'active' ? 'active' as const : 'expired' as const,
       } : null;
@@ -110,21 +123,37 @@ export const useWarranties = (params?: {
   customer_id?: string;
   status?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }) => {
   return useQuery({
     queryKey: ['warranties', params],
-    queryFn: () => {
+    queryFn: async () => {
       let fb = [...fallbackWarranties];
       if (params?.status) fb = fb.filter(w => w.status === params.status);
       if (params?.search) {
         const q = params.search.toLowerCase();
         fb = fb.filter(w =>
-          w.product_name.toLowerCase().includes(q) ||
-          w.customer_name.toLowerCase().includes(q) ||
-          w.serial_number.toLowerCase().includes(q)
+          (w.product_name || '').toLowerCase().includes(q) ||
+          (w.customer_name || '').toLowerCase().includes(q) ||
+          (w.serial_number || '').toLowerCase().includes(q)
         );
       }
-      return withFallback(() => warrantiesApi.getAll(params), fb);
+      const result = await withFallback(() => warrantiesApi.getAll(params), fb as any);
+      return extractArray<Warranty>(result);
+    },
+  });
+};
+
+export const useMyWarranties = (params?: { page?: number; limit?: number }) => {
+  return useQuery({
+    queryKey: ['my-warranties', params],
+    queryFn: async () => {
+      const result = await withFallback(
+        () => warrantiesApi.getMyWarranties(params),
+        fallbackWarranties as any
+      );
+      return extractArray<Warranty>(result);
     },
   });
 };
@@ -154,22 +183,28 @@ export const useCreateWarranty = () => {
         return {
           id: String(Date.now()),
           product_id: data.product_id,
-          product_code: '',
-          product_name: 'Test Product',
           serial_number: '',
-          seller_id: data.seller_id, seller_name: 'Test',
-          customer_name: 'Test',
-          customer_phone: data.phone,
-          warranty_period: 12,
           status: 'active' as const,
           start_date: now.split('T')[0],
           expiry_date: expiry.toISOString().split('T')[0],
           created_at: now, updated_at: now,
-        };
+        } as Warranty;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warranties'] });
+      queryClient.invalidateQueries({ queryKey: ['my-warranties'] });
+    },
+  });
+};
+
+export const useActivateWarranty = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => warrantiesApi.activate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warranties'] });
+      queryClient.invalidateQueries({ queryKey: ['my-warranties'] });
     },
   });
 };
@@ -180,21 +215,24 @@ export const useServices = (params?: {
   customer_id?: string;
   status?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }) => {
   return useQuery({
     queryKey: ['services', params],
-    queryFn: () => {
+    queryFn: async () => {
       let fb = [...fallbackServices];
       if (params?.status) fb = fb.filter(s => s.status === params.status);
       if (params?.search) {
         const q = params.search.toLowerCase();
         fb = fb.filter(s =>
-          s.product_name.toLowerCase().includes(q) ||
-          s.customer_name.toLowerCase().includes(q) ||
-          s.problem.toLowerCase().includes(q)
+          (s.product_name || '').toLowerCase().includes(q) ||
+          (s.customer_name || '').toLowerCase().includes(q) ||
+          (s.problem || '').toLowerCase().includes(q)
         );
       }
-      return withFallback(() => servicesApi.getAll(params), fb);
+      const result = await withFallback(() => servicesApi.getAll(params), fb as any);
+      return extractArray<Service>(result);
     },
   });
 };
@@ -221,21 +259,15 @@ export const useCreateService = () => {
         const now = new Date().toISOString();
         return {
           id: String(Date.now()),
-          warranty_id: undefined,
-          product_code: '',
-          product_name: 'Unknown',
-          serial_number: '',
-          technician_id: data.technician_id, technician_name: 'Test',
-          customer_name: '',
-          customer_phone: '',
+          product_id: data.product_id,
+          technician_id: data.technician_id,
           problem: data.problem,
           solution: data.solution,
           is_warranty: data.is_warranty,
           price: data.price,
           status: 'pending' as const,
-          warranty_status: 'none' as const,
           created_at: now, updated_at: now,
-        };
+        } as Service;
       }
     },
     onSuccess: () => {
