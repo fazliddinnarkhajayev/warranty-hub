@@ -34,7 +34,7 @@ export const MyWarranties: React.FC = () => {
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : warranties && warranties.length > 0 ? (
+        ) : Array.isArray(warranties) && warranties.length > 0 ? (
           <div className="space-y-3">
             {warranties.map((warranty, index) => (
               <div

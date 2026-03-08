@@ -75,7 +75,7 @@ export const MyJobs: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3 animate-slide-up" style={{ animationDelay: '100ms' }}>
-            {!services || services.length === 0 ? (
+            {!Array.isArray(services) || services.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Wrench className="w-12 h-12 mx-auto mb-4 opacity-30" />
                 <p>{t('empty')}</p>
