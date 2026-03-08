@@ -20,7 +20,8 @@ export const CustomerHome: React.FC = () => {
     customer_id: user?.id?.toString() 
   });
 
-  const myWarranties = warranties?.slice(0, 3) || [];
+  const warrantyList = Array.isArray(warranties) ? warranties : [];
+  const myWarranties = warrantyList.slice(0, 3);
 
   const handleViewAll = () => {
     hapticFeedback.light();
