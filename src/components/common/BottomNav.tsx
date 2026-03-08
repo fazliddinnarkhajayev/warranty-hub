@@ -43,8 +43,8 @@ export const BottomNav: React.FC = () => {
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
   const getNavItems = (): NavItem[] => {
-    switch (user?.role) {
-      case 'seller':
+    switch (user?.type) {
+      case 'SELLER':
         return sellerNav;
       case 'customer':
         return customerNav;
